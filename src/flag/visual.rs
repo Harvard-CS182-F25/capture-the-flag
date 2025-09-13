@@ -10,7 +10,7 @@ pub struct FlagGraphicsAssets {
 impl FromWorld for FlagGraphicsAssets {
     fn from_world(world: &mut World) -> Self {
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
-        let mesh = meshes.add(Cuboid::default());
+        let mesh = meshes.add(Cylinder::default());
 
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let red_material = materials.add(Color::srgb(1.0, 0.0, 0.0));

@@ -4,9 +4,8 @@ use crate::team::TeamId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect)]
 pub enum FlagStatus {
-    AtBase,
-    PickedUp,
     Dropped,
+    PickedUp,
     Captured,
 }
 

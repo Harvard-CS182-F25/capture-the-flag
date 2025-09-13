@@ -71,9 +71,7 @@ pub fn detect_flag_pickups(
         }
         let agent_pos = agent_transform.translation.xz();
         for (flag_entity, flag_transform, flag, InteractionRadius(radius)) in &flags {
-            if flag.team == *agent_team
-                || !matches!(flag.status, FlagStatus::AtBase | FlagStatus::Dropped)
-            {
+            if flag.team == *agent_team || !matches!(flag.status, FlagStatus::Dropped) {
                 // can't pick up own flag, or flag that is not on the ground
                 continue;
             }
@@ -112,8 +110,7 @@ pub fn handle_flag_pickups(
             continue;
         };
 
-        if agent.flag.is_some() || !matches!(flag.status, FlagStatus::AtBase | FlagStatus::Dropped)
-        {
+        if agent.flag.is_some() || !matches!(flag.status, FlagStatus::Dropped) {
             continue;
         }
 
