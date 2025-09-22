@@ -4,7 +4,7 @@ use bevy::prelude::*;
 pub struct InteractionRadius(pub f32);
 
 #[derive(Component)]
-pub struct FlagRange;
+pub struct InteractionRange;
 
 #[derive(Component)]
-pub struct AgentRange;
+pub struct VisibleRange;

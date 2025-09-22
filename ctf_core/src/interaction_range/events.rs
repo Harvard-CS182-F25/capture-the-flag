@@ -15,5 +15,5 @@ pub struct FlagDropEvent {
 #[derive(Event, Clone, Copy)]
 pub struct FlagScoreEvent {
     pub agent: Entity,
-    pub flag: Entity,
+    pub capture_point: Entity,
 }

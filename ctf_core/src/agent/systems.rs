@@ -2,6 +2,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::character_controller::CharacterControllerBundle;
+use crate::interaction_range::VisibleRange;
 use crate::team::{Team, TeamId};
 
 use super::components::AgentBundle;
@@ -14,6 +15,7 @@ pub fn spawn_agents(mut commands: Commands, graphics: Res<AgentGraphicsAssets>) 
             team: Team(TeamId::Blue),
             ..Default::default()
         },
+        VisibleRange,
         Mesh3d(graphics.mesh.clone()),
         MeshMaterial3d(graphics.blue_material.clone()),
         Transform::from_xyz(0.0, 0.0, 0.0),

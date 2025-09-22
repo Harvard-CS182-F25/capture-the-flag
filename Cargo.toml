@@ -1,13 +1,6 @@
-[package]
-name = "capture-the-flag"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-avian3d = { version = "0.3.1", features = ["bevy_diagnostic", "diagnostic_ui"] }
-bevy = { version = "0.16.1" }
-bevy-inspector-egui = "0.33.1"
-bevy_gizmos = "0.16.1"
+[workspace]
+members = ["ctf_core", "ctf_core_py"]
+resolver = "2"
 
 [profile.dev]
 opt-level = 1

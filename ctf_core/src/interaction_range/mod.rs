@@ -21,15 +21,21 @@ impl Plugin for InteractionRangePlugin {
         app.add_event::<events::FlagDropEvent>();
         app.add_event::<events::FlagScoreEvent>();
         app.configure_sets(Update, (PickupSet::Detect, PickupSet::Apply).chain());
-        app.add_systems(Update, systems::attach_interaction_range);
-        app.add_systems(Update, systems::update_ring_scale_on_radius_change);
         app.add_systems(
             Update,
-            systems::detect_flag_pickups.in_set(PickupSet::Detect),
+            (
+                systems::update_ring_scale_on_radius_change,
+                systems::attach_interaction_range,
+                systems::remove_ring_on_radius_removal,
+            ),
         );
         app.add_systems(
             Update,
-            systems::handle_flag_pickups.in_set(PickupSet::Apply),
+            (systems::detect_flag_pickups, systems::detect_flag_dropoff).in_set(PickupSet::Detect),
+        );
+        app.add_systems(
+            Update,
+            (systems::handle_flag_pickups, systems::handle_flag_dropoff).in_set(PickupSet::Apply),
         );
     }
 }
