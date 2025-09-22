@@ -15,6 +15,11 @@ pub struct AgentBundle {
     pub team: Team,
 }
 
+#[derive(Debug, Clone, PartialEq, Reflect)]
+pub enum Action {
+    Move { id: u32, direction: Vec2 },
+}
+
 impl Default for AgentBundle {
     fn default() -> Self {
         Self {

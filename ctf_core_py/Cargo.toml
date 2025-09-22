@@ -1,6 +1,6 @@
 [package]
 name = "ctf_core_py"
-version = "0.1.2"
+version = "0.1.1"
 edition = "2021"
 
 [lib]
@@ -21,6 +21,7 @@ ctf_core = { path = "../ctf_core" }
 avian3d = "0.3.1"
 bevy = "0.16.1"
 bevy-inspector-egui = "0.33.1"
+crossbeam-channel = "0.5.15"
 
 
 [[bin]]

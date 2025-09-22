@@ -5,6 +5,7 @@ mod events;
 mod systems;
 
 pub use components::*;
+pub use events::*;
 
 pub struct CharacterControllerPlugin;
 impl Plugin for CharacterControllerPlugin {

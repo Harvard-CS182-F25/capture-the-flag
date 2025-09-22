@@ -50,6 +50,7 @@ pub fn movement(
     time: Res<Time>,
     mut movement_event_reader: EventReader<MovementEvent>,
     mut controllers: Query<(
+        Entity,
         &MovementAcceleration,
         &mut LinearVelocity,
         &mut AngularVelocity,
@@ -59,8 +60,13 @@ pub fn movement(
     let delta_time = time.delta_secs();
 
     for event in movement_event_reader.read() {
-        for (movement_acceleration, mut linear_velocity, mut angular_velocity, is_grounded) in
-            &mut controllers
+        for (
+            entity,
+            movement_acceleration,
+            mut linear_velocity,
+            mut angular_velocity,
+            is_grounded,
+        ) in &mut controllers
         {
             match event {
                 MovementEvent::Translate(direction) => {
@@ -77,6 +83,20 @@ pub fn movement(
                 }
                 MovementEvent::Rotate(angle) => {
                     if is_grounded {
+                        angular_velocity.y += angle * movement_acceleration.0 * delta_time;
+                    }
+                }
+                MovementEvent::TranslateById(id, direction) => {
+                    if is_grounded && entity.index() == *id {
+                        let rotated_direction = direction;
+                        linear_velocity.x +=
+                            rotated_direction.x * movement_acceleration.0 * delta_time;
+                        linear_velocity.z +=
+                            rotated_direction.y * movement_acceleration.0 * delta_time;
+                    }
+                }
+                MovementEvent::RotateById(id, angle) => {
+                    if is_grounded && entity.index() == *id {
                         angular_velocity.y += angle * movement_acceleration.0 * delta_time;
                     }
                 }

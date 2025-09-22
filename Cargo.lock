@@ -2025,11 +2025,12 @@ dependencies = [
 
 [[package]]
 name = "ctf_core_py"
-version = "0.1.2"
+version = "0.1.1"
 dependencies = [
  "avian3d",
  "bevy",
  "bevy-inspector-egui",
+ "crossbeam-channel",
  "ctf_core",
  "pyo3",
  "pyo3-build-config",

@@ -30,7 +30,7 @@ impl MovementBundle {
 
 impl Default for MovementBundle {
     fn default() -> Self {
-        Self::new(10.0, 0.5)
+        Self::new(10.0, 1.0)
     }
 }
 
