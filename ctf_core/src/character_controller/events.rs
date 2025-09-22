@@ -2,6 +2,7 @@ use avian3d::math::*;
 use bevy::prelude::*;
 
 #[derive(Event)]
+#[allow(dead_code)]
 pub enum MovementEvent {
     Translate(Vector2),
     Rotate(Scalar),

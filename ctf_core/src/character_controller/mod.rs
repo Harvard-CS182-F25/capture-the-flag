@@ -5,6 +5,7 @@ mod events;
 mod systems;
 
 pub use components::*;
+#[allow(unused_imports)]
 pub use events::*;
 
 pub struct CharacterControllerPlugin;
