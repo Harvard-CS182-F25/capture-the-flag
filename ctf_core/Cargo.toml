@@ -8,6 +8,12 @@ name = "ctf_core"
 
 [dependencies]
 avian3d = { version = "0.3.1", features = ["bevy_diagnostic", "diagnostic_ui"] }
-bevy = { version = "0.16.1" }
+bevy = { version = "0.16.1", default-features = false, features = [
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    "bevy_render",
+    "bevy_winit",
+    "x11",
+] }
 bevy-inspector-egui = "0.33.1"
 bevy_gizmos = "0.16.1"
