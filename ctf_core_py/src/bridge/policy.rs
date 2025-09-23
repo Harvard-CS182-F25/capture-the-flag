@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{math::NormedVectorSpace, prelude::*};
 use crossbeam_channel::TrySendError;
 use ctf_core::{
     agent::{Action, Agent},
@@ -86,6 +86,7 @@ fn send_game_states(
 
 fn apply_actions(
     bridge: Option<Res<Bridge>>,
+    agents: Query<(Entity, &Agent)>,
     mut movement_event_writer: EventWriter<MovementEvent>,
 ) {
     let Some(bridge) = bridge else {
@@ -106,9 +107,26 @@ fn apply_actions(
             match act {
                 Action::Move {
                     id: agent_id,
-                    direction,
+                    velocity,
                 } => {
-                    movement_event_writer.write(MovementEvent::TranslateById(agent_id, direction));
+                    let agent = agents.iter().find(|(e, _a)| e.index() == agent_id);
+                    if agent.is_none() {
+                        eprintln!("No agent with id {agent_id}");
+                        continue;
+                    }
+                    let (_, agent) = agent.unwrap();
+                    let velocity = if velocity.norm() > agent.speed {
+                        eprintln!(
+                            "Agent {agent_id} trying to move too fast: {} > {}",
+                            velocity.norm(),
+                            agent.speed
+                        );
+                        eprintln!("Capping to max speed");
+                        velocity.normalize() * agent.speed
+                    } else {
+                        velocity
+                    };
+                    movement_event_writer.write(MovementEvent::TranslateById(agent_id, velocity));
                 }
             }
         }

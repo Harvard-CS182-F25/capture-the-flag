@@ -41,15 +41,15 @@ impl AgentState {
 #[pyclass(name = "Action", frozen)]
 #[derive(Debug, Clone)]
 pub enum PyAction {
-    Move { id: u32, direction: (f32, f32) },
+    Move { id: u32, velocity: (f32, f32) },
 }
 
 impl From<PyAction> for Action {
     fn from(val: PyAction) -> Self {
         match val {
-            PyAction::Move { id, direction } => Action::Move {
+            PyAction::Move { id, velocity } => Action::Move {
                 id,
-                direction: direction.into(),
+                velocity: velocity.into(),
             },
         }
     }

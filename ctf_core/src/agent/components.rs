@@ -18,7 +18,7 @@ pub struct AgentBundle {
 #[derive(Debug, Clone, PartialEq, Reflect)]
 #[allow(dead_code)]
 pub enum Action {
-    Move { id: u32, direction: Vec2 },
+    Move { id: u32, velocity: Vec2 },
 }
 
 impl Default for AgentBundle {
