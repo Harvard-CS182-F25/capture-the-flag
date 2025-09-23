@@ -1,4 +1,4 @@
-from ._core import run, Action, AgentState, GameState, Team
+from ._core import run, segment_is_free, Action, AgentState, GameState, Team
 from typing import Protocol, runtime_checkable
 
 @runtime_checkable
@@ -13,5 +13,6 @@ __all__ = [
     "AgentState",
     "GameState",
     "run",
+    "segment_is_free",
     "Team"
 ]

@@ -1,12 +1,15 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-use crate::agent::AgentPlugin;
+use crate::agent::{AgentPlugin, COLLISION_LAYER_AGENT};
 use crate::camera::CameraPlugin;
 use crate::character_controller::CharacterControllerPlugin;
 use crate::flag::FlagPlugin;
 use crate::interaction_range::InteractionRangePlugin;
 use crate::team::TeamPlugin;
+use crate::wall::WallPlugin;
+
+pub const COLLISION_LAYER_GROUND: u32 = 1 << 2;
 
 pub struct CTFPlugin;
 impl Plugin for CTFPlugin {
@@ -18,6 +21,7 @@ impl Plugin for CTFPlugin {
             FlagPlugin,
             InteractionRangePlugin,
             TeamPlugin,
+            WallPlugin,
         ));
         app.add_systems(Startup, setup_scene);
     }
@@ -32,10 +36,15 @@ fn setup_scene(
     let green_material = materials.add(Color::srgb(0.0, 1.0, 0.0));
 
     commands.spawn((
+        Name::new("Ground Plane"),
         Mesh3d(ground_plane_mesh),
         MeshMaterial3d(green_material),
         Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3::new(100.0, 1.0, 100.0)),
         RigidBody::Static,
-        Collider::cuboid(1.0, 1.0, 1.0),
+        Collider::cuboid(100.0, 1.0, 100.0),
+        CollisionLayers::new(
+            LayerMask(COLLISION_LAYER_GROUND),
+            LayerMask(COLLISION_LAYER_AGENT),
+        ),
     ));
 }

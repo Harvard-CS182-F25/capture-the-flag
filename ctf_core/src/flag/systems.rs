@@ -11,58 +11,58 @@ pub fn spawn_flags(
     capture_point_graphics: Res<CapturePointGraphicsAssets>,
 ) {
     commands.spawn(FlagBundle::new(
-        "Blue Flag",
+        "Blue Flag 1",
         TeamId::Blue,
-        Vec3::new(-5.0, 0.0, 0.0),
+        Vec3::new(-35.0, 0.0, -5.0),
         &flag_graphics,
     ));
 
     commands.spawn(FlagBundle::new(
-        "Blue Flag",
+        "Blue Flag 2",
         TeamId::Blue,
-        Vec3::new(5.0, 0.0, 0.0),
+        Vec3::new(-35.0, 0.0, 5.0),
         &flag_graphics,
     ));
 
     commands.spawn(FlagBundle::new(
-        "Red Flag",
+        "Red Flag 1",
         TeamId::Red,
-        Vec3::new(0.0, 0.0, 5.0),
+        Vec3::new(35.0, 0.0, -5.0),
         &flag_graphics,
     ));
 
     commands.spawn(FlagBundle::new(
-        "Red Flag",
+        "Red Flag 2",
         TeamId::Red,
-        Vec3::new(0.0, 0.0, -5.0),
+        Vec3::new(35.0, 0.0, 5.0),
         &flag_graphics,
     ));
 
     commands.spawn(CapturePointBundle::new(
-        "Blue Capture Point",
+        "Blue Capture Point 1",
         TeamId::Blue,
-        Vec3::new(-10.0, 0.0, 0.0),
+        Vec3::new(-40.0, 0.0, -5.0),
         &capture_point_graphics,
     ));
 
     commands.spawn(CapturePointBundle::new(
-        "Blue Capture Point",
+        "Blue Capture Point 2",
         TeamId::Blue,
-        Vec3::new(10.0, 0.0, 0.0),
+        Vec3::new(-40.0, 0.0, 5.0),
         &capture_point_graphics,
     ));
 
     commands.spawn(CapturePointBundle::new(
-        "Red Capture Point",
+        "Red Capture Point 1",
         TeamId::Red,
-        Vec3::new(0.0, 0.0, -10.0),
+        Vec3::new(40.0, 0.0, -5.0),
         &capture_point_graphics,
     ));
 
     commands.spawn(CapturePointBundle::new(
-        "Red Capture Point",
+        "Red Capture Point 2",
         TeamId::Red,
-        Vec3::new(0.0, 0.0, 10.0),
+        Vec3::new(40.0, 0.0, 5.0),
         &capture_point_graphics,
     ));
 }

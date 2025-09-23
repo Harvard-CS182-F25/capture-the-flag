@@ -6,3 +6,4 @@ pub mod debug;
 pub mod flag;
 pub mod interaction_range;
 pub mod team;
+pub mod wall;

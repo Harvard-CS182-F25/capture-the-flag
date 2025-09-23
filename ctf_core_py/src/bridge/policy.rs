@@ -6,7 +6,7 @@ use ctf_core::{
     team::Team,
 };
 
-use crate::{agent::collect_agent_states, game::GameState, worker::PolicyBridge};
+use crate::{agent::collect_agent_states, game::GameState, worker::policy::PolicyBridge};
 use pyo3::prelude::*;
 
 #[derive(Resource)]
@@ -18,13 +18,13 @@ struct Bridge {
 #[derive(Resource)]
 struct PolicyTimer(Timer);
 
-pub struct PythonControlPlugin {
+pub struct PythonPolicyBridgePlugin {
     pub rate_hz: f32,
     pub red_policy: PyObject,
     pub blue_policy: PyObject,
 }
 
-impl Plugin for PythonControlPlugin {
+impl Plugin for PythonPolicyBridgePlugin {
     fn build(&self, app: &mut App) {
         let interval = 1.0_f32 / self.rate_hz.max(1.0);
         let red_bridge =

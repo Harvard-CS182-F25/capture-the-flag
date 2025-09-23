@@ -20,6 +20,47 @@ use game::*;
 
 use crate::team::PyTeamId;
 
+#[pyfunction(name = "segment_is_free")]
+#[pyo3(signature = (start, end, /, *, timeout_ms=None))]
+pub fn segment_is_free(
+    start: (f32, f32),
+    end: (f32, f32),
+    timeout_ms: Option<u64>,
+) -> PyResult<bool> {
+    let start = Vec2::new(start.0, start.1);
+    let end = Vec2::new(end.0, end.1);
+    let timeout = timeout_ms.unwrap_or(100);
+
+    let (tx, rx) = crossbeam_channel::bounded::<bool>(1);
+
+    if let Some(physics_tx) = bridge::physics::PHYSICS_TX.get() {
+        let query = bridge::physics::PhysicsQuery::SegmentCollision2D {
+            seg: bridge::physics::Segment2D { start, end },
+            reply: tx,
+        };
+        if physics_tx.send(query).is_err() {
+            return Err(pyo3::exceptions::PyRuntimeError::new_err(
+                "Failed to send physics query",
+            ));
+        }
+    } else {
+        return Err(pyo3::exceptions::PyRuntimeError::new_err(
+            "Physics bridge not initialized",
+        ));
+    }
+
+    let ok = Python::with_gil(|py| {
+        py.allow_threads(|| rx.recv_timeout(std::time::Duration::from_millis(timeout)))
+    });
+
+    match ok {
+        Ok(collided) => Ok(!collided), // if collided, not free
+        Err(_) => Err(pyo3::exceptions::PyTimeoutError::new_err(
+            "Timeout waiting for physics response",
+        )),
+    }
+}
+
 #[pyfunction(name = "run")]
 fn run(
     py: Python<'_>,
@@ -44,11 +85,12 @@ fn run(
             WorldInspectorPlugin::new(),
             debug::DebugPlugin,
             core::CTFPlugin,
-            bridge::PythonControlPlugin {
+            bridge::policy::PythonPolicyBridgePlugin {
                 rate_hz: rate,
                 red_policy,
                 blue_policy,
             },
+            bridge::physics::PythonPhysicsBridgePlugin,
         ));
 
         app.insert_resource(AmbientLight {
@@ -66,6 +108,7 @@ fn run(
 #[pymodule]
 fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(run, m)?)?;
+    m.add_function(wrap_pyfunction!(segment_is_free, m)?)?;
     m.add_class::<AgentState>()?;
     m.add_class::<GameState>()?;
     m.add_class::<PyTeamId>()?;
