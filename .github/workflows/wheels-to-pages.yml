@@ -1,0 +1,211 @@
+name: Build wheels (abi3) and publish a PEP 503 index to GitHub Pages
+
+on:
+    push:
+        branches: [main, master]
+        tags: ["v*"]
+    pull_request:
+
+jobs:
+    # ---------- LINUX: everything inside the manylinux container ----------
+    build-linux:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: dtolnay/rust-toolchain@stable
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            # venv for develop so stub_gen can import the module
+            - name: Create venv
+              shell: bash
+              run: |
+                  python -m venv .venv
+                  . .venv/bin/activate
+                  python -m pip install -U pip "maturin>=1.7,<2.0"
+
+            - name: maturin develop (enable pymodule)
+              run: .venv/bin/maturin develop -m ctf_core_py/Cargo.toml --features pymodule --release
+
+            - name: Generate .pyi stubs (host)
+              run: cargo run -p ctf_core_py --bin stub_gen --no-default-features
+
+            # Now build wheels inside manylinux2014
+            - name: Build wheels in manylinux2014 (docker)
+              run: |
+                  docker run --rm -t \
+                    -v "$GITHUB_WORKSPACE":/io \
+                    -w /io \
+                    --entrypoint /bin/bash \
+                    ghcr.io/pyo3/maturin:v1.9.3 \
+                    -lc '
+                      set -euxo pipefail
+                      maturin build -m ctf_core_py/Cargo.toml \
+                        --features pymodule --release --sdist --manylinux 2014 -o dist
+                    '
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: dist-linux
+                  path: dist/*
+
+    # ---------- WINDOWS ----------
+    build-windows:
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: dtolnay/rust-toolchain@stable
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            # venv so `maturin develop` has a target; also ensures stub-gen imports the module
+            - name: Create venv (.venv)
+              shell: pwsh
+              run: |
+                  python -m venv .venv
+                  .\.venv\Scripts\python.exe -m pip install -U pip "maturin>=1.7,<2.0"
+                  "VIRTUAL_ENV=$env:GITHUB_WORKSPACE\.venv" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+                  "$env:GITHUB_WORKSPACE\.venv\Scripts"   | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+                  "PYO3_PYTHON=$env:GITHUB_WORKSPACE\.venv\Scripts\python.exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+            - name: maturin develop (enable pymodule)
+              run: maturin develop -m ctf_core_py/Cargo.toml --features pymodule --release
+
+            - name: Generate .pyi stubs
+              run: cargo run -p ctf_core_py --bin stub_gen --no-default-features
+
+            - name: Clean compiled artifacts from python package (Windows)
+              shell: pwsh
+              run: |
+                  # Remove any in-tree native artifacts placed by `maturin develop`
+                  $patterns = @(
+                    'ctf_core_py\python\ctf_core\_core*.pyd',
+                    'ctf_core_py\python\ctf_core\_core*.so',
+                    'ctf_core_py\python\ctf_core\*.dll'
+                  )
+                  Get-ChildItem -Path $patterns -File -ErrorAction SilentlyContinue |
+                    Remove-Item -Force -ErrorAction SilentlyContinue
+
+                  # Sanity check: should print nothing; otherwise fail fast with paths shown
+                  $left = Get-ChildItem -Path 'ctf_core_py\python\ctf_core\*' `
+                            -Include '_core*.pyd','_core*.so','*.dll' -File -ErrorAction SilentlyContinue
+                  if ($left) {
+                    $left | Format-Table FullName, Length, LastWriteTime -AutoSize
+                    throw "In-tree native artifacts remain; refusing to build wheel."
+                  }
+
+            - name: Assert no in-tree binaries (Windows)
+              shell: pwsh
+              run: |
+                  if (Test-Path ctf_core_py\python\ctf_core\_core*.pyd) {
+                    Get-ChildItem ctf_core_py\python\ctf_core\_core*.pyd | Format-List *
+                    throw "In-tree .pyd found; build.rs or another step copied it during build."
+                  }
+
+            # Build wheels on Windows host (no container needed)
+            - name: Build wheels (Windows)
+              uses: PyO3/maturin-action@v1
+              with:
+                  command: build
+                  args: -m ctf_core_py/Cargo.toml --features pymodule --release --sdist -o dist
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: dist-windows
+                  path: dist/*
+
+    # ---------- macOS ----------
+    build-macos:
+        runs-on: macos-14
+        steps:
+            - uses: actions/checkout@v4
+            - uses: dtolnay/rust-toolchain@stable
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            - name: Create venv (.venv)
+              shell: bash
+              run: |
+                  python -m venv .venv
+                  . .venv/bin/activate
+                  python -m pip install -U pip "maturin>=1.7,<2.0"
+                  echo "VIRTUAL_ENV=$PWD/.venv" >> $GITHUB_ENV
+                  echo "$PWD/.venv/bin" >> $GITHUB_PATH
+                  echo "PYO3_PYTHON=$PWD/.venv/bin/python" >> $GITHUB_ENV
+
+            - name: maturin develop (enable pymodule)
+              run: maturin develop -m ctf_core_py/Cargo.toml --features pymodule --release
+
+            - name: Generate .pyi stubs
+              run: cargo run -p ctf_core_py --bin stub_gen --no-default-features
+
+            - name: Build wheels (macOS universal2)
+              uses: PyO3/maturin-action@v1
+              with:
+                  command: build
+                  args: -m ctf_core_py/Cargo.toml --features pymodule --release --sdist --target universal2-apple-darwin -o dist
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: dist-macos
+                  path: dist/*
+
+    # ---------- Pages deploy (only on tags) ----------
+    pages:
+        if: startsWith(github.ref, 'refs/tags/')
+        needs: [build-linux, build-windows, build-macos]
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - name: Download all wheel artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  pattern: dist-*
+                  merge-multiple: true
+                  path: dist
+                  if-no-files-found: error # fail fast if builds produced nothing
+
+            - name: Build PEP 503 simple index
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  python -m pip install --upgrade simple503
+                  mkdir -p site/wheels
+
+                  shopt -s nullglob
+                  files=(dist/*.whl dist/*.tar.gz)
+                  if ((${#files[@]})); then
+                    cp -t site/wheels -- "${files[@]}"
+                    echo "Copied ${#files[@]} artifact(s) into site/wheels"
+                  else
+                    echo "No artifacts found in dist/"; exit 1
+                  fi
+
+                  # Correct base for project Pages: "/<repo>/wheels/"
+                  BASE="/${GITHUB_REPOSITORY#*/}/wheels/"
+                  echo "simple503 base-url: $BASE"
+                  simple503 --sort -B "$BASE" site/wheels
+
+                  echo "<h1>Private Wheels Index -- CS182 ctf</h1>" > site/index.html
+                  touch site/.nojekyll
+
+                  # Sanity check
+                  if [[ -d site/wheels/ctf-core ]]; then
+                    sed -n '1,20p' site/wheels/ctf-core/index.html
+                  fi
+
+            - uses: actions/configure-pages@v5
+            - uses: actions/upload-pages-artifact@v3
+              with:
+                  path: site
+            - id: deployment
+              uses: actions/deploy-pages@v4
