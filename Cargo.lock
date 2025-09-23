@@ -2025,7 +2025,7 @@ dependencies = [
 
 [[package]]
 name = "ctf_core_py"
-version = "0.1.1"
+version = "0.0.1"
 dependencies = [
  "avian3d",
  "bevy",

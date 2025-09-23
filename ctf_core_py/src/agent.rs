@@ -93,5 +93,8 @@ pub fn collect_agent_states(
         }
     }
 
+    red_team.sort_by_key(|a| a.id);
+    blue_team.sort_by_key(|a| a.id);
+
     (red_team, blue_team)
 }
