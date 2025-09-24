@@ -78,8 +78,9 @@ jobs:
                         --features pymodule --release --sdist --manylinux 2014 -o dist
                       sccache --show-stats || true
                     '
+
             - name: Claim ownership of the target directory
-            - run: sudo chown -R $(id -u):$(id -g) target
+              run: sudo chown -R $(id -u):$(id -g) target
 
             # Install the wheel and generate stubs (no duplicate Rust build)
             - name: Install wheel and generate stubs
