@@ -14,6 +14,8 @@ jobs:
     # ---------- LINUX: build inside manylinux; generate stubs once ----------
     build-linux:
         runs-on: ubuntu-latest
+        outputs:
+            stubs_present: ${{ steps.has_stubs.outputs.present }}
         env:
             RUSTC_WRAPPER: sccache
             SCCACHE_GHA_ENABLED: "true"
@@ -96,6 +98,17 @@ jobs:
                   name: dist-linux
                   path: dist/*
 
+            - id: has_stubs
+              shell: bash
+              run: |
+                  shopt -s nullglob
+                  files=(ctf_core_py/python/ctf_core/*.pyi)
+                  if ((${#files[@]})); then
+                    echo "present=true"  >> "$GITHUB_OUTPUT"
+                  else
+                    echo "present=false" >> "$GITHUB_OUTPUT"
+                  fi
+
             - uses: actions/upload-artifact@v4
               with:
                   name: stubs
@@ -124,6 +137,7 @@ jobs:
 
             # (Optional) Download stubs if you want to package them / sanity-check
             - uses: actions/download-artifact@v4
+              if: ${{ needs.build-linux.outputs.stubs_present == 'true' }}
               with:
                   name: stubs
                   path: ctf_core_py/python/ctf_core
@@ -173,6 +187,7 @@ jobs:
 
             # (Optional) Download stubs if you want to package them / sanity-check
             - uses: actions/download-artifact@v4
+              if: ${{ needs.build-linux.outputs.stubs_present == 'true' }}
               with:
                   name: stubs
                   path: ctf_core_py/python/ctf_core
