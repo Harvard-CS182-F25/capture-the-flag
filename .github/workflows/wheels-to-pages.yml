@@ -10,40 +10,55 @@ jobs:
     # ---------- LINUX: everything inside the manylinux container ----------
     build-linux:
         runs-on: ubuntu-latest
+        env:
+            RUSTC_WRAPPER: sccache
+            SCCACHE_GHA_ENABLED: "true"
         steps:
             - uses: actions/checkout@v4
             - uses: dtolnay/rust-toolchain@stable
             - uses: actions/setup-python@v5
-              with:
-                  python-version: "3.11"
+              with: { python-version: "3.11" }
 
-            # venv for develop so stub_gen can import the module
+            # Cache host-side Rust builds (used by stub_gen if it builds anything)
+            - uses: Swatinem/rust-cache@v2
+              with:
+                  prefix-key: ctf-core
+                  workspaces: |
+                      . -> target
+
+            # Create venv early for installing the built wheel later
             - name: Create venv
-              shell: bash
               run: |
                   python -m venv .venv
                   . .venv/bin/activate
                   python -m pip install -U pip "maturin>=1.7,<2.0"
 
-            - name: maturin develop (enable pymodule)
-              run: .venv/bin/maturin develop -m ctf_core_py/Cargo.toml --features pymodule --release
-
-            - name: Generate .pyi stubs (host)
-              run: cargo run -p ctf_core_py --bin stub_gen --no-default-features
-
-            # Now build wheels inside manylinux2014
-            - name: Build wheels in manylinux2014 (docker)
+            # Build wheels ONCE inside manylinux + enable sccache inside container
+            - name: Build wheels in manylinux2014 (docker + sccache)
               run: |
                   docker run --rm -t \
                     -v "$GITHUB_WORKSPACE":/io \
+                    -v "$HOME/.cache/sccache":/root/.cache/sccache \
                     -w /io \
-                    --entrypoint /bin/bash \
-                    ghcr.io/pyo3/maturin:v1.9.3 \
-                    -lc '
+                    -e RUSTC_WRAPPER=sccache \
+                    -e SCCACHE_DIR=/root/.cache/sccache \
+                    --entrypoint /bin/bash ghcr.io/pyo3/maturin:v1.9.3 -lc '
                       set -euxo pipefail
+                      curl -L https://github.com/mozilla/sccache/releases/download/v0.7.7/sccache-v0.7.7-x86_64-unknown-linux-musl.tar.gz \
+                        | tar xz --strip-components=1 -C /usr/local/bin sccache-v0.7.7-x86_64-unknown-linux-musl/sccache
+                      sccache --start-server || true
                       maturin build -m ctf_core_py/Cargo.toml \
                         --features pymodule --release --sdist --manylinux 2014 -o dist
+                      sccache --show-stats || true
                     '
+
+            # Use the built wheel to run stub_gen (no duplicate Rust build)
+            - name: Install wheel and generate stubs
+              run: |
+                  . .venv/bin/activate
+                  pip install dist/*.whl
+                  python -c "import ctf_core as m; print('import ok:', m.__file__)"
+                  cargo run -p ctf_core_py --bin stub_gen --no-default-features --release
 
             - uses: actions/upload-artifact@v4
               with:
@@ -59,6 +74,11 @@ jobs:
             - uses: actions/setup-python@v5
               with:
                   python-version: "3.11"
+            - uses: Swatinem/rust-cache@v2
+              with:
+                  prefix-key: ctf-core
+                  workspaces: |
+                      . -> target
 
             # venv so `maturin develop` has a target; also ensures stub-gen imports the module
             - name: Create venv (.venv)
@@ -125,6 +145,11 @@ jobs:
             - uses: actions/setup-python@v5
               with:
                   python-version: "3.11"
+            - uses: Swatinem/rust-cache@v2
+              with:
+                  prefix-key: ctf-core
+                  workspaces: |
+                      . -> target
 
             - name: Create venv (.venv)
               shell: bash
