@@ -18,7 +18,7 @@ jobs:
             - uses: dtolnay/rust-toolchain@stable
             - uses: actions/setup-python@v5
               with: { python-version: "3.11" }
-
+            - uses: mozilla-actions/sccache@v0.0.3 # << install + cache sccache
             # Cache host-side Rust builds (used by stub_gen if it builds anything)
             - uses: Swatinem/rust-cache@v2
               with:
