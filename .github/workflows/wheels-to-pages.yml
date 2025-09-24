@@ -100,6 +100,7 @@ jobs:
 
     # ---------- WINDOWS ----------
     build-windows:
+        needs: build-linux
         runs-on: windows-latest
         env:
             RUSTC_WRAPPER: sccache
@@ -147,6 +148,7 @@ jobs:
 
     # ---------- macOS ----------
     build-macos:
+        needs: build-linux
         runs-on: macos-14
         env:
             RUSTC_WRAPPER: sccache
