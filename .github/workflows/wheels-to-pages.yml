@@ -6,8 +6,12 @@ on:
         tags: ["v*"]
     pull_request:
 
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
 jobs:
-    # ---------- LINUX: everything inside the manylinux container ----------
+    # ---------- LINUX: build inside manylinux; generate stubs once ----------
     build-linux:
         runs-on: ubuntu-latest
         env:
@@ -18,22 +22,45 @@ jobs:
             - uses: dtolnay/rust-toolchain@stable
             - uses: actions/setup-python@v5
               with: { python-version: "3.11" }
-            - uses: mozilla-actions/sccache@v0.0.3 # << install + cache sccache
-            # Cache host-side Rust builds (used by stub_gen if it builds anything)
+
+            # Rust target cache (host). Helps if any host cargo runs occur.
             - uses: Swatinem/rust-cache@v2
               with:
                   prefix-key: ctf-core
                   workspaces: |
                       . -> target
 
-            # Create venv early for installing the built wheel later
+            # Host sccache (for any host-side cargo)
+            - name: Setup sccache
+              uses: mozilla-actions/sccache-action@v0.0.9
+            - name: Enable sccache env
+              run: |
+                  echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+                  echo "RUSTC_WRAPPER=sccache"   >> $GITHUB_ENV
+
+            # Cache sccache directory (shared with container via mount)
+            - uses: actions/cache@v4
+              with:
+                  path: ~/.cache/sccache
+                  key: sccache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      sccache-${{ runner.os }}-
+
+            # Pip cache
+            - uses: actions/cache@v4
+              with:
+                  path: ~/.cache/pip
+                  key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+                  restore-keys: pip-${{ runner.os }}-
+
+            # Venv (to install built wheel & run stub generator)
             - name: Create venv
               run: |
                   python -m venv .venv
                   . .venv/bin/activate
                   python -m pip install -U pip "maturin>=1.7,<2.0"
 
-            # Build wheels ONCE inside manylinux + enable sccache inside container
+            # Build wheels ONCE (inside manylinux) with sccache mounted
             - name: Build wheels in manylinux2014 (docker + sccache)
               run: |
                   docker run --rm -t \
@@ -44,92 +71,74 @@ jobs:
                     -e SCCACHE_DIR=/root/.cache/sccache \
                     --entrypoint /bin/bash ghcr.io/pyo3/maturin:v1.9.3 -lc '
                       set -euxo pipefail
-                      curl -L https://github.com/mozilla/sccache/releases/download/v0.7.7/sccache-v0.7.7-x86_64-unknown-linux-musl.tar.gz \
-                        | tar xz --strip-components=1 -C /usr/local/bin sccache-v0.7.7-x86_64-unknown-linux-musl/sccache
+                      curl -L https://github.com/mozilla/sccache/releases/download/v0.10.0/sccache-v0.10.0-x86_64-unknown-linux-musl.tar.gz \
+                        | tar xz --strip-components=1 -C /usr/local/bin sccache-v0.10.0-x86_64-unknown-linux-musl/sccache
                       sccache --start-server || true
                       maturin build -m ctf_core_py/Cargo.toml \
                         --features pymodule --release --sdist --manylinux 2014 -o dist
                       sccache --show-stats || true
                     '
 
-            # Use the built wheel to run stub_gen (no duplicate Rust build)
+            # Install the wheel and generate stubs (no duplicate Rust build)
             - name: Install wheel and generate stubs
               run: |
                   . .venv/bin/activate
                   pip install dist/*.whl
                   python -c "import ctf_core as m; print('import ok:', m.__file__)"
-                  cargo run -p ctf_core_py --bin stub_gen --no-default-features --release
+                  # If stub_gen is a Rust bin, avoid sccache requirement for this one step:
+                  env -u RUSTC_WRAPPER cargo run -p ctf_core_py --bin stub_gen --no-default-features --release
 
             - uses: actions/upload-artifact@v4
               with:
                   name: dist-linux
                   path: dist/*
 
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: stubs
+                  path: ctf_core_py/python/ctf_core/*.pyi
+
     # ---------- WINDOWS ----------
     build-windows:
         runs-on: windows-latest
+        env:
+            RUSTC_WRAPPER: sccache
+            SCCACHE_GHA_ENABLED: "true"
         steps:
             - uses: actions/checkout@v4
             - uses: dtolnay/rust-toolchain@stable
             - uses: actions/setup-python@v5
-              with:
-                  python-version: "3.11"
+              with: { python-version: "3.11" }
+
+            - uses: mozilla-actions/sccache-action@v0.0.9
+
             - uses: Swatinem/rust-cache@v2
               with:
                   prefix-key: ctf-core
                   workspaces: |
                       . -> target
 
-            # venv so `maturin develop` has a target; also ensures stub-gen imports the module
-            - name: Create venv (.venv)
-              shell: pwsh
-              run: |
-                  python -m venv .venv
-                  .\.venv\Scripts\python.exe -m pip install -U pip "maturin>=1.7,<2.0"
-                  "VIRTUAL_ENV=$env:GITHUB_WORKSPACE\.venv" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-                  "$env:GITHUB_WORKSPACE\.venv\Scripts"   | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-                  "PYO3_PYTHON=$env:GITHUB_WORKSPACE\.venv\Scripts\python.exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            # (Optional) Download stubs if you want to package them / sanity-check
+            - uses: actions/download-artifact@v4
+              with:
+                  name: stubs
+                  path: ctf_core_py/python/ctf_core
 
-            - name: maturin develop (enable pymodule)
-              run: maturin develop -m ctf_core_py/Cargo.toml --features pymodule --release
-
-            - name: Generate .pyi stubs
-              run: cargo run -p ctf_core_py --bin stub_gen --no-default-features
-
-            - name: Clean compiled artifacts from python package (Windows)
-              shell: pwsh
-              run: |
-                  # Remove any in-tree native artifacts placed by `maturin develop`
-                  $patterns = @(
-                    'ctf_core_py\python\ctf_core\_core*.pyd',
-                    'ctf_core_py\python\ctf_core\_core*.so',
-                    'ctf_core_py\python\ctf_core\*.dll'
-                  )
-                  Get-ChildItem -Path $patterns -File -ErrorAction SilentlyContinue |
-                    Remove-Item -Force -ErrorAction SilentlyContinue
-
-                  # Sanity check: should print nothing; otherwise fail fast with paths shown
-                  $left = Get-ChildItem -Path 'ctf_core_py\python\ctf_core\*' `
-                            -Include '_core*.pyd','_core*.so','*.dll' -File -ErrorAction SilentlyContinue
-                  if ($left) {
-                    $left | Format-Table FullName, Length, LastWriteTime -AutoSize
-                    throw "In-tree native artifacts remain; refusing to build wheel."
-                  }
-
-            - name: Assert no in-tree binaries (Windows)
-              shell: pwsh
-              run: |
-                  if (Test-Path ctf_core_py\python\ctf_core\_core*.pyd) {
-                    Get-ChildItem ctf_core_py\python\ctf_core\_core*.pyd | Format-List *
-                    throw "In-tree .pyd found; build.rs or another step copied it during build."
-                  }
-
-            # Build wheels on Windows host (no container needed)
+            # Build wheels on Windows host
             - name: Build wheels (Windows)
               uses: PyO3/maturin-action@v1
               with:
                   command: build
                   args: -m ctf_core_py/Cargo.toml --features pymodule --release --sdist -o dist
+
+            # Quick import test (optional)
+            - name: Import test
+              shell: pwsh
+              run: |
+                  python -m venv .venv
+                  .\.venv\Scripts\python.exe -m pip install -U pip
+                  .\.venv\Scripts\pip.exe install dist\*.whl
+                  .\.venv\Scripts\python.exe -c "import ctf_core; print('import ok')"
 
             - uses: actions/upload-artifact@v4
               with:
@@ -139,39 +148,44 @@ jobs:
     # ---------- macOS ----------
     build-macos:
         runs-on: macos-14
+        env:
+            RUSTC_WRAPPER: sccache
+            SCCACHE_GHA_ENABLED: "true"
         steps:
             - uses: actions/checkout@v4
             - uses: dtolnay/rust-toolchain@stable
             - uses: actions/setup-python@v5
               with:
                   python-version: "3.11"
+
+            - uses: mozilla-actions/sccache-action@v0.0.9
+
             - uses: Swatinem/rust-cache@v2
               with:
                   prefix-key: ctf-core
                   workspaces: |
                       . -> target
 
-            - name: Create venv (.venv)
-              shell: bash
-              run: |
-                  python -m venv .venv
-                  . .venv/bin/activate
-                  python -m pip install -U pip "maturin>=1.7,<2.0"
-                  echo "VIRTUAL_ENV=$PWD/.venv" >> $GITHUB_ENV
-                  echo "$PWD/.venv/bin" >> $GITHUB_PATH
-                  echo "PYO3_PYTHON=$PWD/.venv/bin/python" >> $GITHUB_ENV
-
-            - name: maturin develop (enable pymodule)
-              run: maturin develop -m ctf_core_py/Cargo.toml --features pymodule --release
-
-            - name: Generate .pyi stubs
-              run: cargo run -p ctf_core_py --bin stub_gen --no-default-features
+            # (Optional) Download stubs if you want to package them / sanity-check
+            - uses: actions/download-artifact@v4
+              with:
+                  name: stubs
+                  path: ctf_core_py/python/ctf_core
 
             - name: Build wheels (macOS universal2)
               uses: PyO3/maturin-action@v1
               with:
                   command: build
                   args: -m ctf_core_py/Cargo.toml --features pymodule --release --sdist --target universal2-apple-darwin -o dist
+
+            # Quick import test (optional)
+            - name: Import test
+              run: |
+                  python -m venv .venv
+                  . .venv/bin/activate
+                  pip install -U pip
+                  pip install dist/*.whl
+                  python -c "import ctf_core; print('import ok')"
 
             - uses: actions/upload-artifact@v4
               with:
@@ -197,15 +211,13 @@ jobs:
                   pattern: dist-*
                   merge-multiple: true
                   path: dist
-                  if-no-files-found: error # fail fast if builds produced nothing
+                  if-no-files-found: error
 
             - name: Build PEP 503 simple index
-              shell: bash
               run: |
                   set -euo pipefail
                   python -m pip install --upgrade simple503
                   mkdir -p site/wheels
-
                   shopt -s nullglob
                   files=(dist/*.whl dist/*.tar.gz)
                   if ((${#files[@]})); then
@@ -214,19 +226,11 @@ jobs:
                   else
                     echo "No artifacts found in dist/"; exit 1
                   fi
-
-                  # Correct base for project Pages: "/<repo>/wheels/"
                   BASE="/${GITHUB_REPOSITORY#*/}/wheels/"
                   echo "simple503 base-url: $BASE"
                   simple503 --sort -B "$BASE" site/wheels
-
                   echo "<h1>Private Wheels Index -- CS182 ctf</h1>" > site/index.html
                   touch site/.nojekyll
-
-                  # Sanity check
-                  if [[ -d site/wheels/ctf-core ]]; then
-                    sed -n '1,20p' site/wheels/ctf-core/index.html
-                  fi
 
             - uses: actions/configure-pages@v5
             - uses: actions/upload-pages-artifact@v3
