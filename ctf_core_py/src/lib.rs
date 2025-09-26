@@ -17,11 +17,24 @@ use ctf_core::debug;
 
 use agent::*;
 use game::*;
+use pyo3_stub_gen::derive::gen_stub_pyfunction;
 
 use crate::team::PyTeamId;
 
 #[pyfunction(name = "segment_is_free")]
+#[gen_stub_pyfunction]
 #[pyo3(signature = (start, end, /, *, timeout_ms=None))]
+/// Checks if the line segment from `start` to `end` is free of obstacles. The shape of agent is swept along
+/// this segment to check for collisions.
+///
+/// Parameters
+///     `start`: A tuple (x, y) representing the start point of the segment.
+///     `end`: A tuple (x, y) representing the end point of the segment.
+///     `timeout_ms`: Optional timeout in milliseconds to wait for a response from the physics engine. Default is 100ms.
+///
+/// Returns
+///    `True` if the agent can move along the segment without colliding with any obstacles
+///    `False` otherwise
 pub fn segment_is_free(
     start: (f32, f32),
     end: (f32, f32),
@@ -61,7 +74,18 @@ pub fn segment_is_free(
     }
 }
 
+#[gen_stub_pyfunction]
 #[pyfunction(name = "run")]
+/// Runs the Capture the Flag simulation with the given policies for each team.
+///
+/// Parameters
+///     `start`: A tuple (x, y) representing the start point of the segment.
+///     `end`: A tuple (x, y) representing the end point of the segment.
+///     `timeout_ms`: Optional timeout in milliseconds to wait for a response from the physics engine. Default is 100ms.
+///
+/// Returns
+///    `True` if the agent can move along the segment without colliding with any obstacles
+///    `False` otherwise
 fn run(
     py: Python<'_>,
     red_policy: PyObject,

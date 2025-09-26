@@ -2,6 +2,7 @@ from ._core import run, segment_is_free, Action, AgentState, GameState, Team
 from typing import Protocol, runtime_checkable
 
 Position = tuple[float, float]
+Velocity = tuple[float, float]
 
 @runtime_checkable
 class AgentProtocol(Protocol):

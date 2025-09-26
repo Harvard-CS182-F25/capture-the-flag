@@ -4,7 +4,10 @@ use ctf_core::{
     team::{Team, TeamId},
 };
 use pyo3::prelude::*;
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
+/// A snapshot of an agent's state in the game.
+#[gen_stub_pyclass]
 #[pyclass(name = "AgentState", frozen)]
 #[derive(Debug, Clone)]
 pub struct AgentState {
@@ -15,42 +18,56 @@ pub struct AgentState {
     pub has_flag: bool,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl AgentState {
+    /// The human-readable name of the agent.
     #[getter]
     fn name(&self) -> &str {
         &self.name
     }
 
+    /// The unique identifier of the agent.
     #[getter]
     fn id(&self) -> u32 {
         self.id
     }
 
+    /// The position of the agent in the game world as an (x, y) tuple.
     #[getter]
     fn position(&self) -> (f32, f32) {
         self.position
     }
 
+    /// If this agent is currently carrying a flag.
     #[getter]
     fn has_flag(&self) -> bool {
         self.has_flag
     }
 }
 
+#[gen_stub_pyclass]
 #[pyclass(name = "Action", frozen)]
 #[derive(Debug, Clone)]
-pub enum PyAction {
-    Move { id: u32, velocity: (f32, f32) },
+pub struct PyAction {
+    id: u32,
+    velocity: (f32, f32),
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl PyAction {
+    #[new]
+    fn new(id: u32, velocity: (f32, f32)) -> Self {
+        PyAction { id, velocity }
+    }
 }
 
 impl From<PyAction> for Action {
     fn from(val: PyAction) -> Self {
-        match val {
-            PyAction::Move { id, velocity } => Action::Move {
-                id,
-                velocity: velocity.into(),
-            },
+        Action::Move {
+            id: val.id,
+            velocity: val.velocity.into(),
         }
     }
 }
