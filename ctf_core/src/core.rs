@@ -11,7 +11,26 @@ use crate::wall::WallPlugin;
 
 pub const COLLISION_LAYER_GROUND: u32 = 1 << 2;
 
-pub struct CTFPlugin;
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
+pub struct CTFConfig {
+    pub red_team_agent_positions: Vec<(f32, f32)>,
+    pub blue_team_agent_positions: Vec<(f32, f32)>,
+    pub red_team_flag_positions: Vec<(f32, f32)>,
+    pub blue_team_flag_positions: Vec<(f32, f32)>,
+    pub red_team_capture_point_positions: Vec<(f32, f32)>,
+    pub blue_team_capture_point_positions: Vec<(f32, f32)>,
+}
+
+pub struct CTFPlugin {
+    pub red_team_agent_positions: Vec<(f32, f32)>,
+    pub blue_team_agent_positions: Vec<(f32, f32)>,
+    pub red_team_flag_positions: Vec<(f32, f32)>,
+    pub blue_team_flag_positions: Vec<(f32, f32)>,
+    pub red_team_capture_point_positions: Vec<(f32, f32)>,
+    pub blue_team_capture_point_positions: Vec<(f32, f32)>,
+}
+
 impl Plugin for CTFPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
@@ -23,6 +42,15 @@ impl Plugin for CTFPlugin {
             TeamPlugin,
             WallPlugin,
         ));
+        app.register_type::<CTFConfig>();
+        app.insert_resource(CTFConfig {
+            red_team_agent_positions: self.red_team_agent_positions.clone(),
+            blue_team_agent_positions: self.blue_team_agent_positions.clone(),
+            red_team_flag_positions: self.red_team_flag_positions.clone(),
+            blue_team_flag_positions: self.blue_team_flag_positions.clone(),
+            red_team_capture_point_positions: self.red_team_capture_point_positions.clone(),
+            blue_team_capture_point_positions: self.blue_team_capture_point_positions.clone(),
+        });
         app.add_systems(Startup, setup_scene);
     }
 }

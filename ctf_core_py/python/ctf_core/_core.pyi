@@ -43,9 +43,60 @@ class AgentState:
         If this agent is currently carrying a flag.
         """
 
+class CapturePointState:
+    r"""
+    A snapshot of an capture point's state in the game.
+    """
+    @property
+    def id(self) -> builtins.int:
+        r"""
+        The unique identifier of the capture point.
+        """
+    @property
+    def team(self) -> Team:
+        r"""
+        The team the capture point belongs to.
+        """
+    @property
+    def position(self) -> tuple[builtins.float, builtins.float]:
+        r"""
+        The position of the flag in the game world as an (x, y) tuple.
+        """
+    def has_flag(self) -> builtins.bool: ...
+
+class Config:
+    @property
+    def red_team_agent_positions(self) -> builtins.list[tuple[builtins.float, builtins.float]]: ...
+    @property
+    def blue_team_agent_positions(self) -> builtins.list[tuple[builtins.float, builtins.float]]: ...
+    @property
+    def red_team_flag_positions(self) -> builtins.list[tuple[builtins.float, builtins.float]]: ...
+    @property
+    def blue_team_flag_positions(self) -> builtins.list[tuple[builtins.float, builtins.float]]: ...
+    @property
+    def red_team_capture_point_positions(self) -> builtins.list[tuple[builtins.float, builtins.float]]: ...
+    @property
+    def blue_team_capture_point_positions(self) -> builtins.list[tuple[builtins.float, builtins.float]]: ...
+    @property
+    def rate_hz(self) -> typing.Optional[builtins.float]: ...
+    @red_team_agent_positions.setter
+    def red_team_agent_positions(self, value: builtins.list[tuple[builtins.float, builtins.float]]) -> None: ...
+    @blue_team_agent_positions.setter
+    def blue_team_agent_positions(self, value: builtins.list[tuple[builtins.float, builtins.float]]) -> None: ...
+    @red_team_flag_positions.setter
+    def red_team_flag_positions(self, value: builtins.list[tuple[builtins.float, builtins.float]]) -> None: ...
+    @blue_team_flag_positions.setter
+    def blue_team_flag_positions(self, value: builtins.list[tuple[builtins.float, builtins.float]]) -> None: ...
+    @red_team_capture_point_positions.setter
+    def red_team_capture_point_positions(self, value: builtins.list[tuple[builtins.float, builtins.float]]) -> None: ...
+    @blue_team_capture_point_positions.setter
+    def blue_team_capture_point_positions(self, value: builtins.list[tuple[builtins.float, builtins.float]]) -> None: ...
+    @rate_hz.setter
+    def rate_hz(self, value: typing.Optional[builtins.float]) -> None: ...
+
 class FlagState:
     r"""
-    A snapshot of an agent's state in the game.
+    A snapshot of an flags's state in the game.
     """
     @property
     def name(self) -> builtins.str:
@@ -118,7 +169,7 @@ class FlagStatus(Enum):
     PickedUp = ...
     Dropped = ...
 
-def run(red_policy:typing.Any, blue_policy:typing.Any, rate_hz:typing.Optional[builtins.float]) -> None:
+def run(red_policy:typing.Any, blue_policy:typing.Any, config:Config) -> None:
     r"""
     Runs the Capture the Flag simulation with the given policies for each team.
     

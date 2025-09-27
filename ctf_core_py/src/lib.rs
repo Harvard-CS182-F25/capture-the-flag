@@ -20,11 +20,47 @@ use ctf_core::debug;
 
 use agent::*;
 use game::*;
+use pyo3_stub_gen::derive::gen_stub_pyclass;
 use pyo3_stub_gen::derive::gen_stub_pyfunction;
 
+use crate::flag::CapturePointState;
 use crate::flag::FlagState;
 use crate::flag::PyFlagStatus;
 use crate::team::PyTeamId;
+
+#[gen_stub_pyclass]
+#[pyclass(name = "Config")]
+#[derive(Debug, Clone, Default)]
+pub struct Config {
+    #[pyo3(get, set)]
+    pub red_team_agent_positions: Vec<(f32, f32)>,
+
+    #[pyo3(get, set)]
+    pub blue_team_agent_positions: Vec<(f32, f32)>,
+
+    #[pyo3(get, set)]
+    pub red_team_flag_positions: Vec<(f32, f32)>,
+
+    #[pyo3(get, set)]
+    pub blue_team_flag_positions: Vec<(f32, f32)>,
+
+    #[pyo3(get, set)]
+    pub red_team_capture_point_positions: Vec<(f32, f32)>,
+
+    #[pyo3(get, set)]
+    pub blue_team_capture_point_positions: Vec<(f32, f32)>,
+
+    #[pyo3(get, set)]
+    pub rate_hz: Option<f32>,
+}
+
+#[pymethods]
+impl Config {
+    #[new]
+    fn new() -> Self {
+        Self::default()
+    }
+}
 
 #[gen_stub_pyfunction]
 #[pyfunction(name = "run")]
@@ -42,9 +78,9 @@ fn run(
     py: Python<'_>,
     red_policy: PyObject,
     blue_policy: PyObject,
-    rate_hz: Option<f32>,
+    config: &Config,
 ) -> PyResult<()> {
-    let rate = rate_hz.unwrap_or(60.0).clamp(1.0, 240.0);
+    let rate = config.rate_hz.unwrap_or(60.0).clamp(1.0, 240.0);
 
     py.allow_threads(|| {
         let mut app = App::new();
@@ -60,7 +96,14 @@ fn run(
             EguiPlugin::default(),
             WorldInspectorPlugin::new(),
             debug::DebugPlugin,
-            core::CTFPlugin,
+            core::CTFPlugin {
+                red_team_agent_positions: config.red_team_agent_positions.clone(),
+                blue_team_agent_positions: config.blue_team_agent_positions.clone(),
+                red_team_flag_positions: config.red_team_flag_positions.clone(),
+                blue_team_flag_positions: config.blue_team_flag_positions.clone(),
+                red_team_capture_point_positions: config.red_team_capture_point_positions.clone(),
+                blue_team_capture_point_positions: config.blue_team_capture_point_positions.clone(),
+            },
             bridge::policy::PythonPolicyBridgePlugin {
                 rate_hz: rate,
                 red_policy,
@@ -150,6 +193,8 @@ fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<AgentState>()?;
     m.add_class::<GameState>()?;
     m.add_class::<FlagState>()?;
+    m.add_class::<CapturePointState>()?;
+    m.add_class::<Config>()?;
     m.add_class::<PyFlagStatus>()?;
     m.add_class::<PyTeamId>()?;
     m.add_class::<PyAction>()?;

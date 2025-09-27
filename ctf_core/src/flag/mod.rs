@@ -4,7 +4,7 @@ mod visual;
 
 use bevy::prelude::*;
 
-pub use crate::flag::components::*;
+pub use components::*;
 
 pub struct FlagPlugin;
 impl Plugin for FlagPlugin {
@@ -14,5 +14,6 @@ impl Plugin for FlagPlugin {
         app.init_resource::<visual::CapturePointGraphicsAssets>();
         app.init_resource::<components::FlagCaptureCounts>();
         app.add_systems(Startup, systems::spawn_flags);
+        app.add_systems(Startup, systems::spawn_capture_points);
     }
 }
