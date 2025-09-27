@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::core::CTFConfig;
-use crate::flag::{CapturePoint, CapturePointBundle};
+use crate::flag::CapturePointBundle;
 use crate::team::TeamId;
 
 use super::components::FlagBundle;

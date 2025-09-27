@@ -58,6 +58,7 @@ impl FlagState {
 #[pyclass(name = "CapturePointState", frozen)]
 #[derive(Debug, Clone)]
 pub struct CapturePointState {
+    name: String,
     id: u32,
     team: TeamId,
     position: (f32, f32),
@@ -67,6 +68,12 @@ pub struct CapturePointState {
 #[gen_stub_pymethods]
 #[pymethods]
 impl CapturePointState {
+    // The human-readable name of the capture point.
+    #[getter]
+    fn name(&self) -> &str {
+        &self.name
+    }
+
     /// The unique identifier of the capture point.
     #[getter]
     fn id(&self) -> u32 {
@@ -85,6 +92,7 @@ impl CapturePointState {
         self.position
     }
 
+    // Whether the capture point currently has a flag.
     fn has_flag(&self) -> bool {
         self.has_flag
     }
@@ -137,13 +145,14 @@ pub fn collect_flag_states(
 }
 
 pub fn collect_capture_point_states(
-    capture_points: Query<(Entity, &Transform, &CapturePoint, &Team)>,
+    capture_points: Query<(Entity, &Name, &Transform, &CapturePoint, &Team)>,
 ) -> (Vec<CapturePointState>, Vec<CapturePointState>) {
     let mut red_team = vec![];
     let mut blue_team = vec![];
 
-    for (entity, transform, capture_point, team) in &capture_points {
+    for (entity, name, transform, capture_point, team) in &capture_points {
         let cp_state = CapturePointState {
+            name: name.as_str().to_string(),
             id: entity.index(),
             team: team.0,
             position: (transform.translation.x, transform.translation.z),
