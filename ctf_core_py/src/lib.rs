@@ -51,6 +51,9 @@ pub struct Config {
     pub blue_team_capture_point_positions: Vec<(f32, f32)>,
 
     #[pyo3(get, set)]
+    pub debug: bool,
+
+    #[pyo3(get, set)]
     pub rate_hz: Option<f32>,
 }
 
@@ -95,7 +98,6 @@ fn run(
             PhysicsPlugins::default(),
             EguiPlugin::default(),
             WorldInspectorPlugin::new(),
-            debug::DebugPlugin,
             core::CTFPlugin {
                 red_team_agent_positions: config.red_team_agent_positions.clone(),
                 blue_team_agent_positions: config.blue_team_agent_positions.clone(),
@@ -111,6 +113,10 @@ fn run(
             },
             bridge::physics::PythonPhysicsBridgePlugin,
         ));
+
+        if config.debug {
+            app.add_plugins(debug::DebugPlugin);
+        }
 
         app.add_systems(PostStartup, force_focus);
 
