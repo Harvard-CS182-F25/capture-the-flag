@@ -87,7 +87,8 @@ impl CapturePointBundle {
     }
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource, Reflect, Default)]
+#[reflect(Resource, Default)]
 pub struct FlagCaptureCounts {
     pub red: u32,
     pub blue: u32,

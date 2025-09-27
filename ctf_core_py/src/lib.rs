@@ -7,6 +7,8 @@ mod worker;
 
 use avian3d::prelude::*;
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
+use bevy::winit::WinitWindows;
 use pyo3::prelude::*;
 
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
@@ -67,6 +69,8 @@ fn run(
             bridge::physics::PythonPhysicsBridgePlugin,
         ));
 
+        app.add_systems(PostStartup, force_focus);
+
         app.insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 1_500.0,
@@ -124,6 +128,18 @@ pub fn segment_is_free(start: (f32, f32), end: (f32, f32), timeout_ms: u64) -> P
         Err(_) => Err(pyo3::exceptions::PyTimeoutError::new_err(
             "Timeout waiting for physics response",
         )),
+    }
+}
+
+fn force_focus(
+    winit_windows: NonSend<WinitWindows>,
+    q: Query<(Entity, &Window), With<PrimaryWindow>>,
+) {
+    if let Ok((entity, _window)) = q.single() {
+        if let Some(win) = winit_windows.get_window(entity) {
+            // winit 0.29+: request focus (no-op on some platforms)
+            win.focus_window();
+        }
     }
 }
 
