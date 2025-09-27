@@ -3,7 +3,7 @@ use crossbeam_channel::TrySendError;
 use ctf_core::{
     agent::{Action, Agent},
     character_controller::MovementEvent,
-    flag::Flag,
+    flag::{Flag, FlagCaptureCounts},
     team::Team,
 };
 
@@ -55,6 +55,7 @@ impl Plugin for PythonPolicyBridgePlugin {
 fn send_game_states(
     time: Res<Time>,
     mut t: ResMut<PolicyTimer>,
+    scores: Res<FlagCaptureCounts>,
     bridge: Option<Res<Bridge>>,
     agents: Query<(Entity, &Name, &Transform, &Agent, &Team)>,
     flags: Query<(Entity, &Name, &Transform, &Flag, &Team)>,
@@ -72,8 +73,8 @@ fn send_game_states(
     let num_flags_per_team = red_flags.len() as u32;
 
     let game_state = GameState {
-        red_score: 0,
-        blue_score: 0,
+        red_score: scores.red,
+        blue_score: scores.blue,
         red_team,
         blue_team,
         red_flags,
