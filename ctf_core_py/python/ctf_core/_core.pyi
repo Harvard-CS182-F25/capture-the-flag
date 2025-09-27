@@ -132,7 +132,7 @@ def run(red_policy:typing.Any, blue_policy:typing.Any, rate_hz:typing.Optional[b
        `False` otherwise
     """
 
-def segment_is_free(start:tuple[builtins.float, builtins.float], end:tuple[builtins.float, builtins.float], timeout_ms:typing.Optional[builtins.int]) -> builtins.bool:
+def segment_is_free(start:tuple[builtins.float, builtins.float], end:tuple[builtins.float, builtins.float], timeout_ms:builtins.int=100) -> builtins.bool:
     r"""
     Checks if the line segment from `start` to `end` is free of obstacles. The shape of agent is swept along
     this segment to check for collisions.
