@@ -6,6 +6,8 @@ use ctf_core::{
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
+use crate::team::PyTeamId;
+
 /// A snapshot of an agent's state in the game.
 #[gen_stub_pyclass]
 #[pyclass(name = "AgentState", frozen)]
@@ -15,7 +17,7 @@ pub struct AgentState {
     pub id: u32,
     pub team: TeamId,
     pub position: (f32, f32),
-    pub has_flag: bool,
+    pub agent: Agent,
 }
 
 #[gen_stub_pymethods]
@@ -33,6 +35,18 @@ impl AgentState {
         self.id
     }
 
+    #[getter]
+    /// The team the agent belongs to.
+    fn team(&self) -> PyTeamId {
+        PyTeamId { inner: self.team }
+    }
+
+    #[getter]
+    /// The maximum speed of the agent.
+    fn max_speed(&self) -> f32 {
+        self.agent.speed
+    }
+
     /// The position of the agent in the game world as an (x, y) tuple.
     #[getter]
     fn position(&self) -> (f32, f32) {
@@ -42,7 +56,7 @@ impl AgentState {
     /// If this agent is currently carrying a flag.
     #[getter]
     fn has_flag(&self) -> bool {
-        self.has_flag
+        self.agent.flag.is_some()
     }
 }
 
@@ -101,7 +115,7 @@ pub fn collect_agent_states(
             id: entity.index(),
             team: team.0,
             position: (transform.translation.x, transform.translation.z),
-            has_flag: agent.flag.is_some(),
+            agent: *agent,
         };
 
         match team.0 {

@@ -1,4 +1,4 @@
-from ._core import run, segment_is_free, Action, AgentState, GameState, Team
+from ._core import run, segment_is_free, Action, AgentState, FlagState, FlagStatus, GameState, Team
 from typing import Protocol, runtime_checkable
 
 Position = tuple[float, float]
@@ -20,6 +20,8 @@ __all__ = [
     "AgentProtocol",
     "AgentState",
     "GameState",
+    "FlagState",
+    "FlagStatus",
     "point_is_free",
     "run",
     "segment_is_free",

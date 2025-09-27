@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
 use crate::agent::AgentState;
+use crate::flag::FlagState;
 use crate::team::PyTeamId;
 use ctf_core::team::TeamId;
 
@@ -14,6 +15,9 @@ pub struct GameState {
     pub blue_score: u32,
     pub red_team: Vec<AgentState>,
     pub blue_team: Vec<AgentState>,
+    pub red_flags: Vec<FlagState>,
+    pub blue_flags: Vec<FlagState>,
+    pub num_flags_per_team: u32,
 }
 
 #[gen_stub_pymethods]

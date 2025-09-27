@@ -3,10 +3,14 @@ use crossbeam_channel::TrySendError;
 use ctf_core::{
     agent::{Action, Agent},
     character_controller::MovementEvent,
+    flag::Flag,
     team::Team,
 };
 
-use crate::{agent::collect_agent_states, game::GameState, worker::policy::PolicyBridge};
+use crate::{
+    agent::collect_agent_states, flag::collect_flag_states, game::GameState,
+    worker::policy::PolicyBridge,
+};
 use pyo3::prelude::*;
 
 #[derive(Resource)]
@@ -53,6 +57,7 @@ fn send_game_states(
     mut t: ResMut<PolicyTimer>,
     bridge: Option<Res<Bridge>>,
     agents: Query<(Entity, &Name, &Transform, &Agent, &Team)>,
+    flags: Query<(Entity, &Name, &Transform, &Flag, &Team)>,
 ) {
     let Some(bridge) = bridge else {
         return;
@@ -63,11 +68,17 @@ fn send_game_states(
     }
 
     let (red_team, blue_team) = collect_agent_states(agents);
+    let (red_flags, blue_flags) = collect_flag_states(flags);
+    let num_flags_per_team = red_flags.len() as u32;
+
     let game_state = GameState {
         red_score: 0,
         blue_score: 0,
         red_team,
         blue_team,
+        red_flags,
+        blue_flags,
+        num_flags_per_team,
     };
 
     for bridge in [&bridge.red, &bridge.blue] {

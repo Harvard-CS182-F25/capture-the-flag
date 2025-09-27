@@ -3,6 +3,7 @@
 
 import builtins
 import typing
+from enum import Enum
 
 class Action:
     def __new__(cls, id:builtins.int, velocity:tuple[builtins.float, builtins.float]) -> Action: ...
@@ -22,6 +23,16 @@ class AgentState:
         The unique identifier of the agent.
         """
     @property
+    def team(self) -> Team:
+        r"""
+        The team the agent belongs to.
+        """
+    @property
+    def max_speed(self) -> builtins.float:
+        r"""
+        The maximum speed of the agent.
+        """
+    @property
     def position(self) -> tuple[builtins.float, builtins.float]:
         r"""
         The position of the agent in the game world as an (x, y) tuple.
@@ -31,6 +42,33 @@ class AgentState:
         r"""
         If this agent is currently carrying a flag.
         """
+
+class FlagState:
+    r"""
+    A snapshot of an agent's state in the game.
+    """
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        The human-readable name of the flag.
+        """
+    @property
+    def id(self) -> builtins.int:
+        r"""
+        The unique identifier of the flag.
+        """
+    @property
+    def team(self) -> Team:
+        r"""
+        The team the flag belongs to.
+        """
+    @property
+    def position(self) -> tuple[builtins.float, builtins.float]:
+        r"""
+        The position of the flag in the game world as an (x, y) tuple.
+        """
+    @property
+    def status(self) -> FlagStatus: ...
 
 class GameState:
     r"""
@@ -59,14 +97,14 @@ class GameState:
     def get_team_score(self, team:Team) -> builtins.int:
         r"""
         Gets the score for the specified team.
-
+        
         Parameters
            `team`: The team whose score to retrieve (either `Team.RED` or `Team.BLUE`).
         """
     def get_team_agents(self, team:Team) -> builtins.list[AgentState]:
         r"""
         Gets the list of agents for the specified team.
-
+        
         Parameters
            `team`: The team whose agents to retrieve (either `Team.RED` or
         """
@@ -75,15 +113,20 @@ class Team:
     RED: Team = ...
     BLUE: Team = ...
 
+class FlagStatus(Enum):
+    Captured = ...
+    PickedUp = ...
+    Dropped = ...
+
 def run(red_policy:typing.Any, blue_policy:typing.Any, rate_hz:typing.Optional[builtins.float]) -> None:
     r"""
     Runs the Capture the Flag simulation with the given policies for each team.
-
+    
     Parameters
         `start`: A tuple (x, y) representing the start point of the segment.
         `end`: A tuple (x, y) representing the end point of the segment.
         `timeout_ms`: Optional timeout in milliseconds to wait for a response from the physics engine. Default is 100ms.
-
+    
     Returns
        `True` if the agent can move along the segment without colliding with any obstacles
        `False` otherwise
@@ -93,12 +136,12 @@ def segment_is_free(start:tuple[builtins.float, builtins.float], end:tuple[built
     r"""
     Checks if the line segment from `start` to `end` is free of obstacles. The shape of agent is swept along
     this segment to check for collisions.
-
+    
     Parameters
         `start`: A tuple (x, y) representing the start point of the segment.
         `end`: A tuple (x, y) representing the end point of the segment.
         `timeout_ms`: Optional timeout in milliseconds to wait for a response from the physics engine. Default is 100ms.
-
+    
     Returns
        `True` if the agent can move along the segment without colliding with any obstacles
        `False` otherwise

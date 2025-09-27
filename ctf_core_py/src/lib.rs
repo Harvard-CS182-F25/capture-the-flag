@@ -1,5 +1,6 @@
 mod agent;
 mod bridge;
+mod flag;
 mod game;
 mod team;
 mod worker;
@@ -19,6 +20,8 @@ use agent::*;
 use game::*;
 use pyo3_stub_gen::derive::gen_stub_pyfunction;
 
+use crate::flag::FlagState;
+use crate::flag::PyFlagStatus;
 use crate::team::PyTeamId;
 
 #[pyfunction(name = "segment_is_free")]
@@ -135,6 +138,8 @@ fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(segment_is_free, m)?)?;
     m.add_class::<AgentState>()?;
     m.add_class::<GameState>()?;
+    m.add_class::<FlagState>()?;
+    m.add_class::<PyFlagStatus>()?;
     m.add_class::<PyTeamId>()?;
     m.add_class::<PyAction>()?;
 
