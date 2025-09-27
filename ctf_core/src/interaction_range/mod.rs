@@ -31,11 +31,11 @@ impl Plugin for InteractionRangePlugin {
         );
         app.add_systems(
             Update,
-            (systems::detect_flag_pickups, systems::detect_flag_dropoff).in_set(PickupSet::Detect),
+            (systems::detect_flag_pickups, systems::detect_flag_capture).in_set(PickupSet::Detect),
         );
         app.add_systems(
             Update,
-            (systems::handle_flag_pickups, systems::handle_flag_dropoff).in_set(PickupSet::Apply),
+            (systems::handle_flag_pickups, systems::handle_flag_capture).in_set(PickupSet::Apply),
         );
     }
 }

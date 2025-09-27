@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::agent::{Agent, AgentGraphicsAssets};
-use crate::flag::{CapturePoint, Flag, FlagStatus};
+use crate::flag::{CapturePoint, Flag, FlagCaptureCounts, FlagStatus};
 use crate::interaction_range::events::FlagScoreEvent;
 use crate::team::{Team, TeamId};
 
@@ -143,7 +143,7 @@ pub fn handle_flag_pickups(
     }
 }
 
-pub fn detect_flag_dropoff(
+pub fn detect_flag_capture(
     mut writer: EventWriter<FlagScoreEvent>,
     agents: Query<(Entity, &Transform, &Team, &Agent)>,
     capture_points: Query<(Entity, &InteractionRadius, &Transform, &CapturePoint)>,
@@ -179,12 +179,13 @@ pub fn detect_flag_dropoff(
     }
 }
 
-pub fn handle_flag_dropoff(
+pub fn handle_flag_capture(
     mut commands: Commands,
     mut reader: EventReader<FlagScoreEvent>,
     mut agents: Query<&mut Agent>,
     mut flags: Query<(&mut Flag, &mut Visibility, &mut Transform)>,
     mut capture_points: Query<&mut CapturePoint>,
+    mut capture_counts: ResMut<FlagCaptureCounts>,
     agent_graphics: Res<AgentGraphicsAssets>,
 ) {
     for FlagScoreEvent {
@@ -234,6 +235,9 @@ pub fn handle_flag_dropoff(
         *flag_visibility = Visibility::Inherited;
         *flag_transform = Transform::IDENTITY;
 
-        // TODO: Update Score
+        match flag.team {
+            TeamId::Red => capture_counts.blue += 1,
+            TeamId::Blue => capture_counts.red += 1,
+        }
     }
 }
