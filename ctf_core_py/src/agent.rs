@@ -102,23 +102,6 @@ impl From<PyAction> for Action {
     }
 }
 
-pub fn parse_actions(py: Python, obj: Py<PyAny>) -> Vec<Action> {
-    let actions: Vec<Py<PyAny>> = match obj.extract(py) {
-        Ok(actions) => actions,
-        Err(_) => return vec![],
-    };
-
-    let mut result = Vec::with_capacity(actions.len());
-    for action in actions {
-        let action: PyAction = match action.extract(py) {
-            Ok(action) => action,
-            Err(_) => continue,
-        };
-        result.push(action.into());
-    }
-    result
-}
-
 pub fn collect_agent_states(
     agents: Query<(Entity, &Name, &Transform, &Agent, &Team)>,
 ) -> (Vec<AgentState>, Vec<AgentState>) {
