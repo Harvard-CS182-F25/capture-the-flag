@@ -8,6 +8,9 @@ pub use components::*;
 
 use crate::core::CTFConfig;
 
+pub const FLAG_COOLDOWN_TIME: f32 = 0.5;
+pub const FLAG_INTERACTION_RADIUS: f32 = 3.0;
+pub const FLAG_SPAWN_RADIUS: f32 = 5.0;
 pub struct FlagPlugin;
 impl Plugin for FlagPlugin {
     fn build(&self, app: &mut App) {

@@ -170,6 +170,31 @@ class GameState:
         r"""
         The list of agents on the blue team, sorted by their IDs.
         """
+    @property
+    def red_flags(self) -> builtins.list[FlagState]:
+        r"""
+        The list of flags belonging to the red team, sorted by their IDs.
+        """
+    @property
+    def blue_flags(self) -> builtins.list[FlagState]:
+        r"""
+        The list of flags belonging to the blue team, sorted by their IDs.
+        """
+    @property
+    def num_flags_per_team(self) -> builtins.int:
+        r"""
+        The number of flags each team starts with at the beginning of the game.
+        """
+    @property
+    def red_capture_points(self) -> builtins.list[CapturePointState]:
+        r"""
+        The list of capture points belonging to the red team, sorted by their IDs.
+        """
+    @property
+    def blue_capture_points(self) -> builtins.list[CapturePointState]:
+        r"""
+        The list of capture points belonging to the blue team, sorted by their IDs.
+        """
     def get_team_score(self, team:Team) -> builtins.int:
         r"""
         Gets the score for the specified team.
@@ -182,7 +207,21 @@ class GameState:
         Gets the list of agents for the specified team.
         
         Parameters
-           `team`: The team whose agents to retrieve (either `Team.RED` or
+           `team`: The team whose agents to retrieve (either `Team.RED` or `Team.BLUE`).
+        """
+    def get_team_flags(self, team:Team) -> builtins.list[FlagState]:
+        r"""
+        Gets the list of flags for the specified team.
+        
+        Parameters
+          `team`: The team whose flags to retrieve (either `Team.RED` or `Team.BLUE`).
+        """
+    def get_team_capture_points(self, team:Team) -> builtins.list[CapturePointState]:
+        r"""
+        Gets the list of capture points for the specified team.
+        
+        Parameters
+         `team`: The team whose capture points to retrieve (either `Team.RED` or `Team.BLUE`).
         """
     @staticmethod
     def from_json(json_str:builtins.str) -> GameState: ...

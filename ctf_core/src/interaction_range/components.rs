@@ -8,3 +8,6 @@ pub struct InteractionRange;
 
 #[derive(Component)]
 pub struct VisibleRange;
+
+#[derive(Component)]
+pub struct RecentlyDropped(pub Timer);

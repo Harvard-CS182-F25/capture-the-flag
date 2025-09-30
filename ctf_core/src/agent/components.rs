@@ -1,4 +1,7 @@
-use crate::team::{Team, TeamId};
+use crate::{
+    agent::AGENT_DEFAULT_SPEED,
+    team::{Team, TeamId},
+};
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +30,7 @@ impl Default for AgentBundle {
         Self {
             name: Name::new("Agent"),
             agent: Agent {
-                speed: 5.0,
+                speed: AGENT_DEFAULT_SPEED,
                 flag: None,
             },
             team: Team(TeamId::Red),

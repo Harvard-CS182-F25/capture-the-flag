@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::flag::FLAG_INTERACTION_RADIUS;
 use crate::interaction_range::{InteractionRadius, VisibleRange};
 use crate::team::TeamId;
 
@@ -35,7 +36,7 @@ impl FlagBundle {
                 team,
                 status: FlagStatus::Dropped,
             },
-            interaction_radius: InteractionRadius(2.0),
+            interaction_radius: InteractionRadius(FLAG_INTERACTION_RADIUS),
             transform: Transform::from_translation(position),
             visibile_range: VisibleRange,
         }

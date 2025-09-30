@@ -10,6 +10,10 @@ pub use visual::*;
 use crate::core::CTFConfig;
 
 pub const COLLISION_LAYER_AGENT: u32 = 1 << 1;
+pub const AGENT_DEFAULT_SPEED: f32 = 10.0;
+pub const AGENT_FLAG_SPEED: f32 = 7.5;
+pub const AGENT_COOLDOWN_TIME: f32 = 1.0;
+pub const AGENT_TAG_RADIUS: f32 = 2.0;
 
 pub struct AgentPlugin;
 impl Plugin for AgentPlugin {

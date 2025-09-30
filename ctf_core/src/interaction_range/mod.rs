@@ -35,13 +35,26 @@ impl Plugin for InteractionRangePlugin {
             )
                 .run_if(|c: Res<CTFConfig>| !c.headless),
         );
+
+        app.add_systems(Update, systems::tick_recently_dropped);
+
         app.add_systems(
             Update,
-            (systems::detect_flag_pickups, systems::detect_flag_capture).in_set(PickupSet::Detect),
+            (
+                systems::detect_flag_pickups,
+                systems::detect_flag_capture,
+                systems::detect_flag_drop,
+            )
+                .in_set(PickupSet::Detect),
         );
         app.add_systems(
             Update,
-            (systems::handle_flag_pickups, systems::handle_flag_capture).in_set(PickupSet::Apply),
+            (
+                systems::handle_flag_pickups,
+                systems::handle_flag_capture,
+                systems::handle_flag_drop,
+            )
+                .in_set(PickupSet::Apply),
         );
     }
 }
