@@ -5,13 +5,14 @@ use ctf_core::{
 };
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyclass_enum, gen_stub_pymethods};
+use serde::{Deserialize, Serialize};
 
 use crate::team::PyTeamId;
 
 /// A snapshot of an flags's state in the game.
 #[gen_stub_pyclass]
 #[pyclass(name = "FlagState", frozen)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlagState {
     id: u32,
     name: String,
@@ -56,7 +57,7 @@ impl FlagState {
 /// A snapshot of an capture point's state in the game.
 #[gen_stub_pyclass]
 #[pyclass(name = "CapturePointState", frozen)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CapturePointState {
     name: String,
     id: u32,

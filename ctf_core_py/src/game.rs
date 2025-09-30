@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
+use serde::{Deserialize, Serialize};
 
 use crate::agent::AgentState;
 use crate::flag::{CapturePointState, FlagState};
@@ -9,7 +10,7 @@ use ctf_core::team::TeamId;
 /// A snapshot of the current game state, including scores and agent states for both teams.
 #[gen_stub_pyclass]
 #[pyclass(name = "GameState", frozen)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameState {
     pub red_score: u32,
     pub blue_score: u32,
@@ -69,5 +70,15 @@ impl GameState {
             TeamId::Red => self.red_team.clone(),
             TeamId::Blue => self.blue_team.clone(),
         }
+    }
+
+    #[staticmethod]
+    fn from_json(json_str: &str) -> PyResult<Self> {
+        serde_json::from_str(json_str).map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "Failed to parse GameState from JSON: {}",
+                e
+            ))
+        })
     }
 }

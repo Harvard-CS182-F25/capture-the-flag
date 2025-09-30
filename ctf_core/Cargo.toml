@@ -18,3 +18,4 @@ bevy = { version = "0.16.1", default-features = false, features = [
 ] }
 bevy-inspector-egui = "0.33.1"
 bevy_gizmos = "0.16.1"
+serde = "1.0.228"

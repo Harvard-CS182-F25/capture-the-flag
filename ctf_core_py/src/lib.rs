@@ -1,15 +1,19 @@
 mod agent;
 mod bridge;
+mod config;
 mod flag;
 mod game;
+mod state_queue;
 mod team;
 mod worker;
 
 use avian3d::prelude::*;
+use bevy::app::ScheduleRunnerPlugin;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy::winit::WinitWindows;
 use pyo3::prelude::*;
+use std::time::Duration;
 
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -20,50 +24,15 @@ use ctf_core::debug;
 
 use agent::*;
 use game::*;
-use pyo3_stub_gen::derive::gen_stub_pyclass;
 use pyo3_stub_gen::derive::gen_stub_pyfunction;
 
+use crate::bridge::policy::TestHarnessBridge;
+use crate::config::PyConfig;
 use crate::flag::CapturePointState;
 use crate::flag::FlagState;
 use crate::flag::PyFlagStatus;
+use crate::state_queue::StateQueue;
 use crate::team::PyTeamId;
-
-#[gen_stub_pyclass]
-#[pyclass(name = "Config")]
-#[derive(Debug, Clone, Default)]
-pub struct Config {
-    #[pyo3(get, set)]
-    pub red_team_agent_positions: Vec<(f32, f32)>,
-
-    #[pyo3(get, set)]
-    pub blue_team_agent_positions: Vec<(f32, f32)>,
-
-    #[pyo3(get, set)]
-    pub red_team_flag_positions: Vec<(f32, f32)>,
-
-    #[pyo3(get, set)]
-    pub blue_team_flag_positions: Vec<(f32, f32)>,
-
-    #[pyo3(get, set)]
-    pub red_team_capture_point_positions: Vec<(f32, f32)>,
-
-    #[pyo3(get, set)]
-    pub blue_team_capture_point_positions: Vec<(f32, f32)>,
-
-    #[pyo3(get, set)]
-    pub debug: bool,
-
-    #[pyo3(get, set)]
-    pub rate_hz: Option<f32>,
-}
-
-#[pymethods]
-impl Config {
-    #[new]
-    fn new() -> Self {
-        Self::default()
-    }
-}
 
 #[gen_stub_pyfunction]
 #[pyfunction(name = "run")]
@@ -77,15 +46,8 @@ impl Config {
 /// Returns
 ///    `True` if the agent can move along the segment without colliding with any obstacles
 ///    `False` otherwise
-fn run(
-    py: Python<'_>,
-    red_policy: PyObject,
-    blue_policy: PyObject,
-    config: &Config,
-) -> PyResult<()> {
-    let rate = config.rate_hz.unwrap_or(60.0).clamp(1.0, 240.0);
-
-    py.allow_threads(|| {
+fn run(py: Python<'_>, config: &PyConfig) -> PyResult<()> {
+    py.detach(|| {
         let mut app = App::new();
         app.add_plugins((
             DefaultPlugins.set(WindowPlugin {
@@ -96,8 +58,6 @@ fn run(
                 ..Default::default()
             }),
             PhysicsPlugins::default(),
-            EguiPlugin::default(),
-            WorldInspectorPlugin::new(),
             core::CTFPlugin {
                 red_team_agent_positions: config.red_team_agent_positions.clone(),
                 blue_team_agent_positions: config.blue_team_agent_positions.clone(),
@@ -105,17 +65,21 @@ fn run(
                 blue_team_flag_positions: config.blue_team_flag_positions.clone(),
                 red_team_capture_point_positions: config.red_team_capture_point_positions.clone(),
                 blue_team_capture_point_positions: config.blue_team_capture_point_positions.clone(),
+                headless: false,
             },
             bridge::policy::PythonPolicyBridgePlugin {
-                rate_hz: rate,
-                red_policy,
-                blue_policy,
+                config: config.clone(),
+                test_harness: None,
             },
             bridge::physics::PythonPhysicsBridgePlugin,
         ));
 
         if config.debug {
-            app.add_plugins(debug::DebugPlugin);
+            app.add_plugins((
+                debug::DebugPlugin,
+                EguiPlugin::default(),
+                WorldInspectorPlugin::new(),
+            ));
         }
 
         app.add_systems(PostStartup, force_focus);
@@ -130,6 +94,81 @@ fn run(
     });
 
     Ok(())
+}
+
+#[gen_stub_pyfunction]
+#[pyfunction(name = "run_headless")]
+fn run_headless(py: Python<'_>, config: &PyConfig) -> PyResult<StateQueue> {
+    let rate = config.rate_hz.unwrap_or(60.0).clamp(1.0, 240.0);
+    let config = config.clone();
+    let frame_dt = Duration::from_secs_f64(1.0 / rate as f64);
+
+    let (tx_state, rx_state) = crossbeam_channel::bounded::<GameState>(256);
+    let (tx_stop, rx_stop) = crossbeam_channel::unbounded::<()>();
+
+    let red_team_agent_positions = config.red_team_agent_positions.clone();
+    let blue_team_agent_positions = config.blue_team_agent_positions.clone();
+    let red_team_flag_positions = config.red_team_flag_positions.clone();
+    let blue_team_flag_positions = config.blue_team_flag_positions.clone();
+    let red_team_capture_point_positions = config.red_team_capture_point_positions.clone();
+    let blue_team_capture_point_positions = config.blue_team_capture_point_positions.clone();
+
+    let join = py.detach(|| {
+        std::thread::spawn(move || {
+            let mut app = App::new();
+
+            app.add_plugins((
+                DefaultPlugins
+                    .build()
+                    .disable::<bevy::winit::WinitPlugin>()
+                    .disable::<bevy::window::WindowPlugin>()
+                    .disable::<bevy::render::RenderPlugin>()
+                    .disable::<bevy::pbr::PbrPlugin>()
+                    .disable::<bevy::sprite::SpritePlugin>()
+                    .disable::<bevy::ui::UiPlugin>()
+                    .disable::<bevy::gizmos::GizmoPlugin>()
+                    .disable::<PointerInputPlugin>()
+                    .disable::<bevy::picking::PickingPlugin>()
+                    .disable::<bevy::picking::InteractionPlugin>()
+                    .disable::<bevy::text::TextPlugin>()
+                    .disable::<bevy::core_pipeline::CorePipelinePlugin>(),
+                ScheduleRunnerPlugin::run_loop(frame_dt),
+            ));
+
+            // Provide Assets<Mesh> since RenderPlugin is disabled
+            app.init_asset::<bevy::render::mesh::Mesh>();
+
+            app.add_plugins((
+                PhysicsPlugins::default(),
+                core::CTFPlugin {
+                    red_team_agent_positions,
+                    blue_team_agent_positions,
+                    red_team_flag_positions,
+                    blue_team_flag_positions,
+                    red_team_capture_point_positions,
+                    blue_team_capture_point_positions,
+                    headless: true,
+                },
+                bridge::policy::PythonPolicyBridgePlugin {
+                    config,
+                    test_harness: Some(TestHarnessBridge {
+                        tx_state: tx_state.clone(),
+                        rx_stop: rx_stop.clone(),
+                    }),
+                },
+                bridge::physics::PythonPhysicsBridgePlugin,
+            ));
+
+            app.run();
+        })
+    });
+
+    Ok(StateQueue {
+        rx: rx_state,
+        tx_stop,
+        join: Some(join),
+        rate_hz: rate,
+    })
 }
 
 #[gen_stub_pyfunction]
@@ -168,8 +207,8 @@ pub fn segment_is_free(start: (f32, f32), end: (f32, f32), timeout_ms: u64) -> P
         ));
     }
 
-    let ok = Python::with_gil(|py| {
-        py.allow_threads(|| rx.recv_timeout(std::time::Duration::from_millis(timeout_ms)))
+    let ok = Python::attach(|py| {
+        py.detach(|| rx.recv_timeout(std::time::Duration::from_millis(timeout_ms)))
     });
 
     match ok {
@@ -192,15 +231,16 @@ fn force_focus(
     }
 }
 
-#[pymodule]
+#[pymodule(gil_used = false)]
 fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(run, m)?)?;
+    m.add_function(wrap_pyfunction!(run_headless, m)?)?;
     m.add_function(wrap_pyfunction!(segment_is_free, m)?)?;
     m.add_class::<AgentState>()?;
     m.add_class::<GameState>()?;
     m.add_class::<FlagState>()?;
     m.add_class::<CapturePointState>()?;
-    m.add_class::<Config>()?;
+    m.add_class::<PyConfig>()?;
     m.add_class::<PyFlagStatus>()?;
     m.add_class::<PyTeamId>()?;
     m.add_class::<PyAction>()?;

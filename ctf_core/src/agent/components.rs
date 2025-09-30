@@ -1,7 +1,8 @@
 use crate::team::{Team, TeamId};
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Component, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Component, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub struct Agent {
     pub speed: f32,
@@ -15,7 +16,7 @@ pub struct AgentBundle {
     pub team: Team,
 }
 
-#[derive(Debug, Clone, PartialEq, Reflect)]
+#[derive(Debug, Clone, PartialEq, Reflect, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub enum Action {
     Move { id: u32, velocity: Vec2 },

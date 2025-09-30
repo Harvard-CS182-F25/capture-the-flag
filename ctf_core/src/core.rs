@@ -20,6 +20,7 @@ pub struct CTFConfig {
     pub blue_team_flag_positions: Vec<(f32, f32)>,
     pub red_team_capture_point_positions: Vec<(f32, f32)>,
     pub blue_team_capture_point_positions: Vec<(f32, f32)>,
+    pub headless: bool,
 }
 
 pub struct CTFPlugin {
@@ -29,6 +30,7 @@ pub struct CTFPlugin {
     pub blue_team_flag_positions: Vec<(f32, f32)>,
     pub red_team_capture_point_positions: Vec<(f32, f32)>,
     pub blue_team_capture_point_positions: Vec<(f32, f32)>,
+    pub headless: bool,
 }
 
 impl Plugin for CTFPlugin {
@@ -50,9 +52,28 @@ impl Plugin for CTFPlugin {
             blue_team_flag_positions: self.blue_team_flag_positions.clone(),
             red_team_capture_point_positions: self.red_team_capture_point_positions.clone(),
             blue_team_capture_point_positions: self.blue_team_capture_point_positions.clone(),
+            headless: self.headless,
         });
-        app.add_systems(Startup, setup_scene);
+
+        app.add_systems(Startup, setup_scene.run_if(|c: Res<CTFConfig>| !c.headless));
+        app.add_systems(
+            Startup,
+            setup_scene_headless.run_if(|c: Res<CTFConfig>| c.headless),
+        );
     }
+}
+
+fn setup_scene_headless(mut commands: Commands) {
+    commands.spawn((
+        Name::new("Ground Plane"),
+        Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3::new(100.0, 1.0, 100.0)),
+        RigidBody::Static,
+        Collider::cuboid(100.0, 1.0, 100.0),
+        CollisionLayers::new(
+            LayerMask(COLLISION_LAYER_GROUND),
+            LayerMask(COLLISION_LAYER_AGENT),
+        ),
+    ));
 }
 
 fn setup_scene(

@@ -1,4 +1,4 @@
-from ._core import run, segment_is_free, Action, AgentState, FlagState, FlagStatus, GameState, Team, Config
+from ._core import run, run_headless, segment_is_free, Action, AgentState, FlagState, FlagStatus, GameState, Team, Config
 from typing import Protocol, runtime_checkable
 
 Position = tuple[float, float]
@@ -7,8 +7,6 @@ Velocity = tuple[float, float]
 @runtime_checkable
 class AgentProtocol(Protocol):
     def __init__(self, side: Team) -> None: ...
-
-    def startup(self, initial_state: GameState) -> None: ...
 
     def get_action(self, game_state: GameState, agent_state: AgentState) -> Action: ...
 
@@ -25,6 +23,7 @@ __all__ = [
     "FlagStatus",
     "point_is_free",
     "run",
+    "run_headless",
     "segment_is_free",
     "Team"
 ]

@@ -1,43 +1,52 @@
 use bevy::{math::NormedVectorSpace, prelude::*};
-use crossbeam_channel::TrySendError;
+use crossbeam_channel::{Receiver, Sender, TrySendError};
 use ctf_core::{
     agent::{Action, Agent},
     character_controller::MovementEvent,
     flag::{CapturePoint, Flag, FlagCaptureCounts},
-    team::Team,
+    team::{Team, TeamId},
 };
 
 use crate::{
     agent::collect_agent_states,
+    config::PyConfig,
     flag::{collect_capture_point_states, collect_flag_states},
     game::GameState,
     worker::policy::PolicyBridge,
 };
-use pyo3::prelude::*;
 
 #[derive(Resource)]
 struct Bridge {
     red: PolicyBridge,
     blue: PolicyBridge,
+    test: Option<TestHarnessBridge>,
+}
+
+#[derive(Clone)]
+pub struct TestHarnessBridge {
+    pub tx_state: Sender<GameState>,
+    pub rx_stop: Receiver<()>,
 }
 
 #[derive(Resource)]
 struct PolicyTimer(Timer);
 
 pub struct PythonPolicyBridgePlugin {
-    pub rate_hz: f32,
-    pub red_policy: PyObject,
-    pub blue_policy: PyObject,
+    pub config: PyConfig,
+    pub test_harness: Option<TestHarnessBridge>,
 }
 
 impl Plugin for PythonPolicyBridgePlugin {
     fn build(&self, app: &mut App) {
-        let interval = 1.0_f32 / self.rate_hz.max(1.0);
+        let hz = self.config.rate_hz.unwrap_or(60.0).clamp(1.0, 240.0);
+        let interval = 1.0_f32 / hz;
+
         let red_bridge =
-            Python::with_gil(|py| PolicyBridge::start_policy_worker(self.red_policy.clone_ref(py)));
-        let blue_bridge = Python::with_gil(|py| {
-            PolicyBridge::start_policy_worker(self.blue_policy.clone_ref(py))
-        });
+            PolicyBridge::start(TeamId::Red, self.config.clone(), &self.config.python_exe)
+                .expect("Failed to start red policy");
+        let blue_bridge =
+            PolicyBridge::start(TeamId::Blue, self.config.clone(), &self.config.python_exe)
+                .expect("Failed to start red policy");
 
         app.insert_resource(PolicyTimer(Timer::from_seconds(
             interval,
@@ -47,10 +56,29 @@ impl Plugin for PythonPolicyBridgePlugin {
         app.insert_resource(Bridge {
             red: red_bridge,
             blue: blue_bridge,
+            test: self.test_harness.clone(),
         });
 
-        app.add_systems(Update, (send_game_states, apply_actions));
-        app.add_systems(Last, join_workers_on_exit);
+        app.add_systems(
+            Update,
+            (send_game_states, apply_actions, on_test_harness_stop),
+        );
+
+        app.add_systems(Last, shutdown_workers_on_exit);
+    }
+}
+
+fn on_test_harness_stop(bridge: Option<Res<Bridge>>, mut exit: EventWriter<AppExit>) {
+    let Some(bridge) = bridge else {
+        return;
+    };
+    if let Some(test) = &bridge.test {
+        // non-blocking check for a stop signal
+        if test.rx_stop.try_recv().is_ok() {
+            println!("Test harness requested stop; exiting");
+
+            exit.write(AppExit::Success);
+        }
     }
 }
 
@@ -100,6 +128,14 @@ fn send_game_states(
             Err(TrySendError::Disconnected(_)) => { /* worker died; you may log */ }
         }
     }
+
+    if let Some(test) = &bridge.test {
+        match test.tx_state.try_send(game_state) {
+            Ok(_) => {}
+            Err(TrySendError::Full(_)) => {}
+            Err(TrySendError::Disconnected(_)) => { /* worker died; you may log */ }
+        }
+    }
 }
 
 fn apply_actions(
@@ -112,7 +148,6 @@ fn apply_actions(
     };
 
     for bridge in [&bridge.red, &bridge.blue] {
-        // Drain to latest
         let mut latest: Option<Vec<Action>> = None;
         while let Ok(a) = bridge.rx_action.try_recv() {
             latest = Some(a);
@@ -151,13 +186,10 @@ fn apply_actions(
     }
 }
 
-fn join_workers_on_exit(mut exit_ev: EventReader<AppExit>, bridge: Option<ResMut<Bridge>>) {
-    // Run once when we see the first exit event
+fn shutdown_workers_on_exit(mut exit_ev: EventReader<AppExit>, mut bridge: Option<ResMut<Bridge>>) {
     if exit_ev.read().next().is_none() {
         return;
     }
-    if let Some(mut b) = bridge {
-        b.red.shutdown_and_join();
-        b.blue.shutdown_and_join();
-    }
+
+    bridge.take();
 }

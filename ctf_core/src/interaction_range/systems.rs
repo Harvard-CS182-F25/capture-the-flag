@@ -104,7 +104,7 @@ pub fn handle_flag_pickups(
     mut reader: EventReader<FlagPickupEvent>,
     mut agents: Query<&mut Agent>,
     mut flags: Query<(&mut Flag, &mut Visibility, &mut Transform)>,
-    agent_graphics: Res<AgentGraphicsAssets>,
+    agent_graphics: Option<Res<AgentGraphicsAssets>>,
 ) {
     for FlagPickupEvent {
         agent: agent_entity,
@@ -125,14 +125,15 @@ pub fn handle_flag_pickups(
         }
 
         agent.flag = Some(flag_entity);
-        let pickup_material = match flag.team {
-            TeamId::Red => agent_graphics.blue_pickup_material.clone(),
-            TeamId::Blue => agent_graphics.red_pickup_material.clone(),
-        };
-
-        commands
-            .entity(agent_entity)
-            .insert(MeshMaterial3d(pickup_material));
+        if let Some(agent_graphics) = agent_graphics.as_ref() {
+            let pickup_material = match flag.team {
+                TeamId::Red => agent_graphics.blue_pickup_material.clone(),
+                TeamId::Blue => agent_graphics.red_pickup_material.clone(),
+            };
+            commands
+                .entity(agent_entity)
+                .insert(MeshMaterial3d(pickup_material));
+        }
 
         commands.entity(agent_entity).insert(InteractionRadius(1.0));
 
@@ -186,7 +187,7 @@ pub fn handle_flag_capture(
     mut flags: Query<(&mut Flag, &mut Visibility, &mut Transform)>,
     mut capture_points: Query<&mut CapturePoint>,
     mut capture_counts: ResMut<FlagCaptureCounts>,
-    agent_graphics: Res<AgentGraphicsAssets>,
+    agent_graphics: Option<Res<AgentGraphicsAssets>>,
 ) {
     for FlagScoreEvent {
         agent: agent_entity,
@@ -217,13 +218,16 @@ pub fn handle_flag_capture(
 
         agent.flag = None;
         commands.entity(agent_entity).remove::<InteractionRadius>();
-        let default_material = match flag.team {
-            TeamId::Red => agent_graphics.blue_material.clone(),
-            TeamId::Blue => agent_graphics.red_material.clone(),
-        };
-        commands
-            .entity(agent_entity)
-            .insert(MeshMaterial3d(default_material));
+
+        if let Some(agent_graphics) = agent_graphics.as_ref() {
+            let default_material = match flag.team {
+                TeamId::Red => agent_graphics.blue_material.clone(),
+                TeamId::Blue => agent_graphics.red_material.clone(),
+            };
+            commands
+                .entity(agent_entity)
+                .insert(MeshMaterial3d(default_material));
+        }
 
         flag.status = FlagStatus::Captured;
         capture_point.flag = Some(flag_entity);

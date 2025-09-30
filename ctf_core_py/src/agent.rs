@@ -5,13 +5,14 @@ use ctf_core::{
 };
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
+use serde::{Deserialize, Serialize};
 
 use crate::team::PyTeamId;
 
 /// A snapshot of an agent's state in the game.
 #[gen_stub_pyclass]
 #[pyclass(name = "AgentState", frozen)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentState {
     pub name: String,
     pub id: u32,
@@ -62,7 +63,7 @@ impl AgentState {
 
 #[gen_stub_pyclass]
 #[pyclass(name = "Action", frozen)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PyAction {
     id: u32,
     velocity: (f32, f32),
@@ -75,6 +76,21 @@ impl PyAction {
     fn new(id: u32, velocity: (f32, f32)) -> Self {
         PyAction { id, velocity }
     }
+
+    fn to_json(&self) -> String {
+        serde_json::to_string(&Into::<Action>::into(self.clone())).unwrap()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "Action(id={}, velocity=({}, {}))",
+            self.id, self.velocity.0, self.velocity.1
+        )
+    }
+
+    fn __str__(&self) -> String {
+        self.to_json()
+    }
 }
 
 impl From<PyAction> for Action {
@@ -86,7 +102,7 @@ impl From<PyAction> for Action {
     }
 }
 
-pub fn parse_actions(py: Python, obj: PyObject) -> Vec<Action> {
+pub fn parse_actions(py: Python, obj: Py<PyAny>) -> Vec<Action> {
     let actions: Vec<Py<PyAny>> = match obj.extract(py) {
         Ok(actions) => actions,
         Err(_) => return vec![],
