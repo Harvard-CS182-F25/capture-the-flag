@@ -50,6 +50,36 @@ impl GameState {
         self.blue_team.clone()
     }
 
+    /// The list of flags belonging to the red team, sorted by their IDs.
+    #[getter]
+    fn red_flags(&self) -> Vec<FlagState> {
+        self.red_flags.clone()
+    }
+
+    /// The list of flags belonging to the blue team, sorted by their IDs.
+    #[getter]
+    fn blue_flags(&self) -> Vec<FlagState> {
+        self.blue_flags.clone()
+    }
+
+    /// The number of flags each team starts with at the beginning of the game.
+    #[getter]
+    fn num_flags_per_team(&self) -> u32 {
+        self.num_flags_per_team
+    }
+
+    /// The list of capture points belonging to the red team, sorted by their IDs.
+    #[getter]
+    fn red_capture_points(&self) -> Vec<CapturePointState> {
+        self.red_capture_points.clone()
+    }
+
+    /// The list of capture points belonging to the blue team, sorted by their IDs.
+    #[getter]
+    fn blue_capture_points(&self) -> Vec<CapturePointState> {
+        self.blue_capture_points.clone()
+    }
+
     /// Gets the score for the specified team.
     ///
     /// Parameters
@@ -64,11 +94,33 @@ impl GameState {
     /// Gets the list of agents for the specified team.
     ///
     /// Parameters
-    ///    `team`: The team whose agents to retrieve (either `Team.RED` or
+    ///    `team`: The team whose agents to retrieve (either `Team.RED` or `Team.BLUE`).
     fn get_team_agents(&self, team: PyTeamId) -> Vec<AgentState> {
         match team.inner {
             TeamId::Red => self.red_team.clone(),
             TeamId::Blue => self.blue_team.clone(),
+        }
+    }
+
+    /// Gets the list of flags for the specified team.
+    ///
+    /// Parameters
+    ///   `team`: The team whose flags to retrieve (either `Team.RED` or `Team.BLUE`).
+    fn get_team_flags(&self, team: PyTeamId) -> Vec<FlagState> {
+        match team.inner {
+            TeamId::Red => self.red_flags.clone(),
+            TeamId::Blue => self.blue_flags.clone(),
+        }
+    }
+
+    /// Gets the list of capture points for the specified team.
+    ///
+    /// Parameters
+    ///  `team`: The team whose capture points to retrieve (either `Team.RED` or `Team.BLUE`).
+    fn get_team_capture_points(&self, team: PyTeamId) -> Vec<CapturePointState> {
+        match team.inner {
+            TeamId::Red => self.red_capture_points.clone(),
+            TeamId::Blue => self.blue_capture_points.clone(),
         }
     }
 
