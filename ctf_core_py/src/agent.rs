@@ -26,37 +26,37 @@ pub struct AgentState {
 impl AgentState {
     /// The human-readable name of the agent.
     #[getter]
-    fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
     /// The unique identifier of the agent.
     #[getter]
-    fn id(&self) -> u32 {
+    pub fn id(&self) -> u32 {
         self.id
     }
 
     #[getter]
     /// The team the agent belongs to.
-    fn team(&self) -> PyTeamId {
+    pub fn team(&self) -> PyTeamId {
         PyTeamId { inner: self.team }
     }
 
     #[getter]
     /// The maximum speed of the agent.
-    fn max_speed(&self) -> f32 {
+    pub fn max_speed(&self) -> f32 {
         self.agent.speed
     }
 
     /// The position of the agent in the game world as an (x, y) tuple.
     #[getter]
-    fn position(&self) -> (f32, f32) {
+    pub fn position(&self) -> (f32, f32) {
         self.position
     }
 
     /// If this agent is currently carrying a flag.
     #[getter]
-    fn has_flag(&self) -> bool {
+    pub fn has_flag(&self) -> bool {
         self.agent.flag.is_some()
     }
 }
@@ -73,7 +73,7 @@ pub struct PyAction {
 #[pymethods]
 impl PyAction {
     #[new]
-    fn new(id: u32, velocity: (f32, f32)) -> Self {
+    pub fn new(id: u32, velocity: (f32, f32)) -> Self {
         PyAction { id, velocity }
     }
 

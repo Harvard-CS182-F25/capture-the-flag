@@ -34,49 +34,49 @@ impl GameState {
 
     /// The number of flags captured by the blue team.
     #[getter]
-    fn blue_score(&self) -> u32 {
+    pub fn blue_score(&self) -> u32 {
         self.blue_score
     }
 
     /// The list of agents on the red team, sorted by their IDs.
     #[getter]
-    fn red_team(&self) -> Vec<AgentState> {
+    pub fn red_team(&self) -> Vec<AgentState> {
         self.red_team.clone()
     }
 
     /// The list of agents on the blue team, sorted by their IDs.
     #[getter]
-    fn blue_team(&self) -> Vec<AgentState> {
+    pub fn blue_team(&self) -> Vec<AgentState> {
         self.blue_team.clone()
     }
 
     /// The list of flags belonging to the red team, sorted by their IDs.
     #[getter]
-    fn red_flags(&self) -> Vec<FlagState> {
+    pub fn red_flags(&self) -> Vec<FlagState> {
         self.red_flags.clone()
     }
 
     /// The list of flags belonging to the blue team, sorted by their IDs.
     #[getter]
-    fn blue_flags(&self) -> Vec<FlagState> {
+    pub fn blue_flags(&self) -> Vec<FlagState> {
         self.blue_flags.clone()
     }
 
     /// The number of flags each team starts with at the beginning of the game.
     #[getter]
-    fn num_flags_per_team(&self) -> u32 {
+    pub fn num_flags_per_team(&self) -> u32 {
         self.num_flags_per_team
     }
 
     /// The list of capture points belonging to the red team, sorted by their IDs.
     #[getter]
-    fn red_capture_points(&self) -> Vec<CapturePointState> {
+    pub fn red_capture_points(&self) -> Vec<CapturePointState> {
         self.red_capture_points.clone()
     }
 
     /// The list of capture points belonging to the blue team, sorted by their IDs.
     #[getter]
-    fn blue_capture_points(&self) -> Vec<CapturePointState> {
+    pub fn blue_capture_points(&self) -> Vec<CapturePointState> {
         self.blue_capture_points.clone()
     }
 
@@ -84,7 +84,7 @@ impl GameState {
     ///
     /// Parameters
     ///    `team`: The team whose score to retrieve (either `Team.RED` or `Team.BLUE`).
-    fn get_team_score(&self, team: PyTeamId) -> u32 {
+    pub fn get_team_score(&self, team: &PyTeamId) -> u32 {
         match team.inner {
             TeamId::Red => self.red_score,
             TeamId::Blue => self.blue_score,
@@ -95,7 +95,7 @@ impl GameState {
     ///
     /// Parameters
     ///    `team`: The team whose agents to retrieve (either `Team.RED` or `Team.BLUE`).
-    fn get_team_agents(&self, team: PyTeamId) -> Vec<AgentState> {
+    pub fn get_team_agents(&self, team: &PyTeamId) -> Vec<AgentState> {
         match team.inner {
             TeamId::Red => self.red_team.clone(),
             TeamId::Blue => self.blue_team.clone(),
@@ -106,7 +106,7 @@ impl GameState {
     ///
     /// Parameters
     ///   `team`: The team whose flags to retrieve (either `Team.RED` or `Team.BLUE`).
-    fn get_team_flags(&self, team: PyTeamId) -> Vec<FlagState> {
+    pub fn get_team_flags(&self, team: &PyTeamId) -> Vec<FlagState> {
         match team.inner {
             TeamId::Red => self.red_flags.clone(),
             TeamId::Blue => self.blue_flags.clone(),
@@ -117,7 +117,7 @@ impl GameState {
     ///
     /// Parameters
     ///  `team`: The team whose capture points to retrieve (either `Team.RED` or `Team.BLUE`).
-    fn get_team_capture_points(&self, team: PyTeamId) -> Vec<CapturePointState> {
+    pub fn get_team_capture_points(&self, team: &PyTeamId) -> Vec<CapturePointState> {
         match team.inner {
             TeamId::Red => self.red_capture_points.clone(),
             TeamId::Blue => self.blue_capture_points.clone(),
@@ -125,7 +125,7 @@ impl GameState {
     }
 
     #[staticmethod]
-    fn from_json(json_str: &str) -> PyResult<Self> {
+    pub fn from_json(json_str: &str) -> PyResult<Self> {
         serde_json::from_str(json_str).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
                 "Failed to parse GameState from JSON: {}",

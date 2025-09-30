@@ -24,6 +24,15 @@ impl PyTeamId {
         inner: team::TeamId::Blue,
     };
 
+    pub fn other(&self) -> PyTeamId {
+        PyTeamId {
+            inner: match self.inner {
+                team::TeamId::Red => team::TeamId::Blue,
+                team::TeamId::Blue => team::TeamId::Red,
+            },
+        }
+    }
+
     #[staticmethod]
     fn from_str(s: &str) -> PyResult<Self> {
         serde_json::from_str(s)

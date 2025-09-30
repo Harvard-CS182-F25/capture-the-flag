@@ -14,11 +14,11 @@ use crate::team::PyTeamId;
 #[pyclass(name = "FlagState", frozen)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlagState {
-    id: u32,
-    name: String,
-    team: TeamId,
-    position: (f32, f32),
-    flag: Flag,
+    pub id: u32,
+    pub name: String,
+    pub team: TeamId,
+    pub position: (f32, f32),
+    pub flag: Flag,
 }
 
 #[gen_stub_pymethods]
@@ -26,30 +26,30 @@ pub struct FlagState {
 impl FlagState {
     /// The human-readable name of the flag.
     #[getter]
-    fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
     /// The unique identifier of the flag.
     #[getter]
-    fn id(&self) -> u32 {
+    pub fn id(&self) -> u32 {
         self.id
     }
 
     #[getter]
     /// The team the flag belongs to.
-    fn team(&self) -> PyTeamId {
+    pub fn team(&self) -> PyTeamId {
         PyTeamId { inner: self.team }
     }
 
     /// The position of the flag in the game world as an (x, y) tuple.
     #[getter]
-    fn position(&self) -> (f32, f32) {
+    pub fn position(&self) -> (f32, f32) {
         self.position
     }
 
     #[getter]
-    fn status(&self) -> PyFlagStatus {
+    pub fn status(&self) -> PyFlagStatus {
         self.flag.status.into()
     }
 }

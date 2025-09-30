@@ -1,4 +1,5 @@
 mod agent;
+mod agents;
 mod bridge;
 mod config;
 mod flag;
@@ -27,6 +28,7 @@ use agent::*;
 use game::*;
 use pyo3_stub_gen::derive::gen_stub_pyfunction;
 
+use crate::agents::defense_bot::DefenseBot;
 use crate::bridge::policy::TestHarnessBridge;
 use crate::config::PyConfig;
 use crate::flag::CapturePointState;
@@ -186,6 +188,15 @@ fn run_headless(py: Python<'_>, config: &PyConfig) -> PyResult<StateQueue> {
 #[pyo3(signature = (start, end, side, timeout_ms=100))]
 /// Checks if the line segment from `start` to `end` is free of obstacles by
 /// making a blocking RPC to the Bevy app's physics server.
+///
+/// Parameters:
+///   - `start`: Tuple of (x, y) coordinates for the start of the segment.
+///   - `end`: Tuple of (x, y) coordinates for the end of the segment.
+///   - `side`: Team ID (Team.RED or Team.BLUE)
+///   - `timeout_ms`: Timeout in milliseconds for the RPC call (default: 100ms).
+///
+/// Returns:
+///  - `True` if the segment is free of obstacles, `False` otherwise. This does not include other agents
 pub fn segment_is_free(
     start: (f32, f32),
     end: (f32, f32),
@@ -274,6 +285,7 @@ fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyFlagStatus>()?;
     m.add_class::<PyTeamId>()?;
     m.add_class::<PyAction>()?;
+    m.add_class::<DefenseBot>()?;
     Ok(())
 }
 
