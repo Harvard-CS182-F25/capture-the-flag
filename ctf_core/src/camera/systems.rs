@@ -11,7 +11,7 @@ pub fn setup_camera(mut commands: Commands) {
         })
         .looking_at(Vec3::ZERO, Vec3::NEG_Z),
         Projection::from(OrthographicProjection {
-            scale: -0.2,
+            scale: -0.15,
             ..OrthographicProjection::default_3d()
         }),
     ));
