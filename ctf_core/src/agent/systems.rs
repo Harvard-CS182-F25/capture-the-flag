@@ -5,22 +5,32 @@ use crate::agent::COLLISION_LAYER_AGENT;
 use crate::character_controller::CharacterControllerBundle;
 use crate::core::{COLLISION_LAYER_GROUND, CTFConfig};
 use crate::interaction_range::VisibleRange;
-use crate::team::{Team, TeamId};
+use crate::team::{COLLISION_LAYER_BLUE, COLLISION_LAYER_RED, Team, TeamId};
 use crate::wall::COLLISION_LAYER_WALL;
 
 use super::components::AgentBundle;
 use super::visual::AgentGraphicsAssets;
 
 pub fn spawn_agents_headless(mut commands: Commands, config: Res<CTFConfig>) {
-    let collision_layer = CollisionLayers::new(
-        LayerMask(COLLISION_LAYER_AGENT),
-        LayerMask(COLLISION_LAYER_AGENT | COLLISION_LAYER_WALL | COLLISION_LAYER_GROUND),
-    );
-
     for (team, positions) in [
         (TeamId::Red, &config.red_team_agent_positions),
         (TeamId::Blue, &config.blue_team_agent_positions),
     ] {
+        let team_collision_layer = match team {
+            TeamId::Red => COLLISION_LAYER_RED,
+            TeamId::Blue => COLLISION_LAYER_BLUE,
+        };
+
+        let collision_layer = CollisionLayers::new(
+            LayerMask(COLLISION_LAYER_AGENT | team_collision_layer),
+            LayerMask(
+                COLLISION_LAYER_AGENT
+                    | COLLISION_LAYER_WALL
+                    | COLLISION_LAYER_GROUND
+                    | team_collision_layer,
+            ),
+        );
+
         for (i, &position) in positions.iter().enumerate() {
             let name = match team {
                 TeamId::Blue => format!("Blue Agent {}", i + 1),
@@ -49,15 +59,25 @@ pub fn spawn_agents(
     graphics: Res<AgentGraphicsAssets>,
     config: Res<CTFConfig>,
 ) {
-    let collision_layer = CollisionLayers::new(
-        LayerMask(COLLISION_LAYER_AGENT),
-        LayerMask(COLLISION_LAYER_AGENT | COLLISION_LAYER_WALL | COLLISION_LAYER_GROUND),
-    );
-
     for (team, positions) in [
         (TeamId::Red, &config.red_team_agent_positions),
         (TeamId::Blue, &config.blue_team_agent_positions),
     ] {
+        let team_collision_layer = match team {
+            TeamId::Red => COLLISION_LAYER_RED,
+            TeamId::Blue => COLLISION_LAYER_BLUE,
+        };
+
+        let collision_layer = CollisionLayers::new(
+            LayerMask(COLLISION_LAYER_AGENT | team_collision_layer),
+            LayerMask(
+                COLLISION_LAYER_AGENT
+                    | COLLISION_LAYER_WALL
+                    | COLLISION_LAYER_GROUND
+                    | team_collision_layer,
+            ),
+        );
+
         for (i, &position) in positions.iter().enumerate() {
             let name = match team {
                 TeamId::Blue => format!("Blue Agent {}", i + 1),

@@ -1,3 +1,4 @@
+use avian3d::debug_render::PhysicsDebugPlugin;
 use avian3d::prelude::*;
 use bevy::{
     diagnostic::FrameTimeDiagnosticsPlugin, input::common_conditions::input_just_pressed,
@@ -12,6 +13,7 @@ impl Plugin for DebugPlugin {
         app.add_plugins((
             PhysicsDiagnosticsPlugin,
             PhysicsDiagnosticsUiPlugin,
+            PhysicsDebugPlugin::default(),
             FrameTimeDiagnosticsPlugin::default(),
         ));
 

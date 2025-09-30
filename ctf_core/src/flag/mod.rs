@@ -11,6 +11,12 @@ use crate::core::CTFConfig;
 pub const FLAG_COOLDOWN_TIME: f32 = 0.5;
 pub const FLAG_INTERACTION_RADIUS: f32 = 3.0;
 pub const FLAG_SPAWN_RADIUS: f32 = 5.0;
+pub const KEEP_AWAY_RADIUS: f32 = 3.0;
+
+pub const COLLISION_LAYER_FLAG_OR_CP: u32 = 1 << 5;
+pub const COLLISION_LAYER_CAMP_BLOCK_RED: u32 = 1 << 20;
+pub const COLLISION_LAYER_CAMP_BLOCK_BLUE: u32 = 1 << 21;
+
 pub struct FlagPlugin;
 impl Plugin for FlagPlugin {
     fn build(&self, app: &mut App) {

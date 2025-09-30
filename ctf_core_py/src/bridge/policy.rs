@@ -73,7 +73,6 @@ fn on_test_harness_stop(bridge: Option<Res<Bridge>>, mut exit: EventWriter<AppEx
         return;
     };
     if let Some(test) = &bridge.test {
-        // non-blocking check for a stop signal
         if test.rx_stop.try_recv().is_ok() {
             println!("Test harness requested stop; exiting");
 

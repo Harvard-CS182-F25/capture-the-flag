@@ -12,6 +12,7 @@ use bevy::app::ScheduleRunnerPlugin;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy::winit::WinitWindows;
+use ctf_core::team::TeamId;
 use pyo3::prelude::*;
 use std::time::Duration;
 
@@ -37,15 +38,6 @@ use crate::team::PyTeamId;
 #[gen_stub_pyfunction]
 #[pyfunction(name = "run")]
 /// Runs the Capture the Flag simulation with the given policies for each team.
-///
-/// Parameters
-///     `start`: A tuple (x, y) representing the start point of the segment.
-///     `end`: A tuple (x, y) representing the end point of the segment.
-///     `timeout_ms`: Optional timeout in milliseconds to wait for a response from the physics engine. Default is 100ms.
-///
-/// Returns
-///    `True` if the agent can move along the segment without colliding with any obstacles
-///    `False` otherwise
 fn run(py: Python<'_>, config: &PyConfig) -> PyResult<()> {
     py.detach(|| {
         let mut app = App::new();
@@ -67,12 +59,21 @@ fn run(py: Python<'_>, config: &PyConfig) -> PyResult<()> {
                 blue_team_capture_point_positions: config.blue_team_capture_point_positions.clone(),
                 headless: false,
             },
-            bridge::policy::PythonPolicyBridgePlugin {
-                config: config.clone(),
-                test_harness: None,
-            },
+            // Initialize in-proc physics channel + processing system
             bridge::physics::PythonPhysicsBridgePlugin,
         ));
+
+        // Start the physics RPC server now (after physics bridge exists),
+        // and export its address so children can connect.
+        if let Ok(addr) = bridge::physics::start_physics_rpc_server() {
+            std::env::set_var("PHYSICS_ADDR", addr.to_string());
+        }
+
+        // Now start policy bridges (children will inherit PHYSICS_ADDR).
+        app.add_plugins(bridge::policy::PythonPolicyBridgePlugin {
+            config: config.clone(),
+            test_harness: None,
+        });
 
         if config.debug {
             app.add_plugins((
@@ -149,15 +150,24 @@ fn run_headless(py: Python<'_>, config: &PyConfig) -> PyResult<StateQueue> {
                     blue_team_capture_point_positions,
                     headless: true,
                 },
-                bridge::policy::PythonPolicyBridgePlugin {
-                    config,
-                    test_harness: Some(TestHarnessBridge {
-                        tx_state: tx_state.clone(),
-                        rx_stop: rx_stop.clone(),
-                    }),
-                },
+                // physics bridge first
                 bridge::physics::PythonPhysicsBridgePlugin,
             ));
+
+            // Start RPC and export addr so segment_is_free can connect (also
+            // useful for same-process tests).
+            if let Ok(addr) = bridge::physics::start_physics_rpc_server() {
+                std::env::set_var("PHYSICS_ADDR", addr.to_string());
+            }
+
+            // Now policy (children inherit PHYSICS_ADDR)
+            app.add_plugins(bridge::policy::PythonPolicyBridgePlugin {
+                config,
+                test_harness: Some(TestHarnessBridge {
+                    tx_state: tx_state.clone(),
+                    rx_stop: rx_stop.clone(),
+                }),
+            });
 
             app.run();
         })
@@ -173,50 +183,70 @@ fn run_headless(py: Python<'_>, config: &PyConfig) -> PyResult<StateQueue> {
 
 #[gen_stub_pyfunction]
 #[pyfunction(name = "segment_is_free")]
-#[pyo3(signature = (start, end, timeout_ms=100))]
-/// Checks if the line segment from `start` to `end` is free of obstacles. The shape of agent is swept along
-/// this segment to check for collisions.
-///
-/// Parameters
-///     `start`: A tuple (x, y) representing the start point of the segment.
-///     `end`: A tuple (x, y) representing the end point of the segment.
-///     `timeout_ms`: Optional timeout in milliseconds to wait for a response from the physics engine. Default is 100ms.
-///
-/// Returns
-///    `True` if the agent can move along the segment without colliding with any obstacles
-///    `False` otherwise
-pub fn segment_is_free(start: (f32, f32), end: (f32, f32), timeout_ms: u64) -> PyResult<bool> {
-    let start = Vec2::new(start.0, start.1);
-    let end = Vec2::new(end.0, end.1);
+#[pyo3(signature = (start, end, side, timeout_ms=100))]
+/// Checks if the line segment from `start` to `end` is free of obstacles by
+/// making a blocking RPC to the Bevy app's physics server.
+pub fn segment_is_free(
+    start: (f32, f32),
+    end: (f32, f32),
+    side: PyTeamId,
+    timeout_ms: u64,
+) -> PyResult<bool> {
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpStream;
 
-    let (tx, rx) = crossbeam_channel::bounded::<bool>(1);
+    // Get server address from env or from the physics module (same-process).
+    let addr = std::env::var("PHYSICS_ADDR")
+        .ok()
+        .or_else(|| bridge::physics::get_physics_rpc_addr().map(|a| a.to_string()))
+        .ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err(
+                "Physics RPC not initialized (PHYSICS_ADDR not set)",
+            )
+        })?;
 
-    if let Some(physics_tx) = bridge::physics::PHYSICS_TX.get() {
-        let query = bridge::physics::PhysicsQuery::SegmentCollision2D {
-            seg: bridge::physics::Segment2D { start, end },
-            reply: tx,
-        };
-        if physics_tx.send(query).is_err() {
-            return Err(pyo3::exceptions::PyRuntimeError::new_err(
-                "Failed to send physics query",
-            ));
-        }
-    } else {
-        return Err(pyo3::exceptions::PyRuntimeError::new_err(
-            "Physics bridge not initialized",
-        ));
-    }
+    let stream = TcpStream::connect(&addr).map_err(|e| {
+        pyo3::exceptions::PyConnectionError::new_err(format!("connect {}: {}", addr, e))
+    })?;
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(timeout_ms)));
+    let _ = stream.set_write_timeout(Some(Duration::from_millis(50)));
 
-    let ok = Python::attach(|py| {
-        py.detach(|| rx.recv_timeout(std::time::Duration::from_millis(timeout_ms)))
+    // Simple one-shot request with id=1.
+    let team_str = match side.inner {
+        TeamId::Red => "Red",
+        TeamId::Blue => "Blue",
+    };
+    let req = serde_json::json!({
+        "id": 1u64,
+        "start": [start.0, start.1],
+        "end":   [end.0,   end.1],
+        "team":  team_str,
     });
 
-    match ok {
-        Ok(collided) => Ok(!collided), // if collided, not free
-        Err(_) => Err(pyo3::exceptions::PyTimeoutError::new_err(
-            "Timeout waiting for physics response",
-        )),
+    {
+        let mut w = std::io::BufWriter::new(&stream);
+        writeln!(w, "{}", req).map_err(|e| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("send physics req: {}", e))
+        })?;
+        let _ = w.flush();
     }
+
+    let mut r = BufReader::new(stream);
+    let mut line = String::new();
+    r.read_line(&mut line).map_err(|_| {
+        pyo3::exceptions::PyTimeoutError::new_err("Timeout waiting for physics response")
+    })?;
+
+    #[derive(serde::Deserialize)]
+    struct PhysResp {
+        id: u64,
+        free: bool,
+    }
+    let resp: PhysResp = serde_json::from_str(&line).map_err(|e| {
+        pyo3::exceptions::PyRuntimeError::new_err(format!("bad physics resp: {}", e))
+    })?;
+
+    Ok(resp.free)
 }
 
 fn force_focus(
@@ -244,7 +274,6 @@ fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyFlagStatus>()?;
     m.add_class::<PyTeamId>()?;
     m.add_class::<PyAction>()?;
-
     Ok(())
 }
 

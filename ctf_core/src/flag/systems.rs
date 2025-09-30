@@ -1,8 +1,12 @@
+use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::core::CTFConfig;
-use crate::flag::CapturePointBundle;
-use crate::team::TeamId;
+use crate::flag::{
+    COLLISION_LAYER_CAMP_BLOCK_BLUE, COLLISION_LAYER_CAMP_BLOCK_RED, COLLISION_LAYER_FLAG_OR_CP,
+    CapturePointBundle, KEEP_AWAY_RADIUS,
+};
+use crate::team::{COLLISION_LAYER_BLUE, COLLISION_LAYER_RED, TeamId};
 
 use super::components::FlagBundle;
 use super::visual::{CapturePointGraphicsAssets, FlagGraphicsAssets};
@@ -12,17 +16,28 @@ pub fn spawn_flags_headless(mut commands: Commands, config: Res<CTFConfig>) {
         (TeamId::Red, &config.red_team_flag_positions),
         (TeamId::Blue, &config.blue_team_flag_positions),
     ] {
+        let team_collision_layer = match team {
+            TeamId::Red => COLLISION_LAYER_RED | COLLISION_LAYER_CAMP_BLOCK_RED,
+            TeamId::Blue => COLLISION_LAYER_BLUE | COLLISION_LAYER_CAMP_BLOCK_BLUE,
+        };
+
+        let collision_layer = CollisionLayers::new(
+            LayerMask(team_collision_layer | COLLISION_LAYER_FLAG_OR_CP),
+            LayerMask(team_collision_layer),
+        );
+
         for (i, &position) in positions.iter().enumerate() {
             let flag_name = match team {
                 TeamId::Blue => format!("Blue Flag {}", i + 1),
                 TeamId::Red => format!("Red Flag {}", i + 1),
             };
 
-            commands.spawn((FlagBundle::new(
-                &flag_name,
-                team,
-                Vec3::new(position.0, 0.0, position.1),
-            ),));
+            commands.spawn((
+                FlagBundle::new(&flag_name, team, Vec3::new(position.0, 0.0, position.1)),
+                Collider::cylinder(KEEP_AWAY_RADIUS, 1.0),
+                RigidBody::Static,
+                collision_layer,
+            ));
         }
     }
 }
@@ -36,6 +51,16 @@ pub fn spawn_flags(
         (TeamId::Red, &config.red_team_flag_positions),
         (TeamId::Blue, &config.blue_team_flag_positions),
     ] {
+        let team_collision_layer = match team {
+            TeamId::Red => COLLISION_LAYER_RED | COLLISION_LAYER_CAMP_BLOCK_RED,
+            TeamId::Blue => COLLISION_LAYER_BLUE | COLLISION_LAYER_CAMP_BLOCK_BLUE,
+        };
+
+        let collision_layer = CollisionLayers::new(
+            LayerMask(team_collision_layer | COLLISION_LAYER_FLAG_OR_CP),
+            LayerMask(team_collision_layer),
+        );
+
         for (i, &position) in positions.iter().enumerate() {
             let flag_name = match team {
                 TeamId::Blue => format!("Blue Flag {}", i + 1),
@@ -49,6 +74,9 @@ pub fn spawn_flags(
                     TeamId::Blue => flag_graphics.blue_material.clone(),
                     TeamId::Red => flag_graphics.red_material.clone(),
                 }),
+                Collider::cylinder(KEEP_AWAY_RADIUS, 2.0),
+                RigidBody::Static,
+                collision_layer,
             ));
         }
     }
@@ -59,16 +87,27 @@ pub fn spawn_capture_points_headless(mut commands: Commands, config: Res<CTFConf
         (TeamId::Red, &config.red_team_capture_point_positions),
         (TeamId::Blue, &config.blue_team_capture_point_positions),
     ] {
+        let team_collision_layer = match team {
+            TeamId::Red => COLLISION_LAYER_BLUE | COLLISION_LAYER_CAMP_BLOCK_BLUE,
+            TeamId::Blue => COLLISION_LAYER_RED | COLLISION_LAYER_CAMP_BLOCK_RED,
+        };
+
+        let collision_layer = CollisionLayers::new(
+            LayerMask(team_collision_layer | COLLISION_LAYER_FLAG_OR_CP),
+            LayerMask(team_collision_layer),
+        );
+
         for (i, &position) in positions.iter().enumerate() {
             let name = match team {
                 TeamId::Blue => format!("Blue Capture Point {}", i + 1),
                 TeamId::Red => format!("Red Capture Point {}", i + 1),
             };
 
-            commands.spawn(CapturePointBundle::new(
-                &name,
-                team,
-                Vec3::new(position.0, 0.0, position.1),
+            commands.spawn((
+                CapturePointBundle::new(&name, team, Vec3::new(position.0, 0.0, position.1)),
+                Collider::cylinder(KEEP_AWAY_RADIUS, 2.0),
+                RigidBody::Static,
+                collision_layer,
             ));
         }
     }
@@ -83,6 +122,16 @@ pub fn spawn_capture_points(
         (TeamId::Red, &config.red_team_capture_point_positions),
         (TeamId::Blue, &config.blue_team_capture_point_positions),
     ] {
+        let team_collision_layer = match team {
+            TeamId::Red => COLLISION_LAYER_BLUE | COLLISION_LAYER_CAMP_BLOCK_BLUE,
+            TeamId::Blue => COLLISION_LAYER_RED | COLLISION_LAYER_CAMP_BLOCK_RED,
+        };
+
+        let collision_layer = CollisionLayers::new(
+            LayerMask(team_collision_layer | COLLISION_LAYER_FLAG_OR_CP),
+            LayerMask(team_collision_layer),
+        );
+
         for (i, &position) in positions.iter().enumerate() {
             let name = match team {
                 TeamId::Blue => format!("Blue Capture Point {}", i + 1),
@@ -96,6 +145,9 @@ pub fn spawn_capture_points(
                     TeamId::Red => capture_point_graphics.blue_material.clone(),
                     TeamId::Blue => capture_point_graphics.red_material.clone(),
                 }),
+                Collider::cylinder(KEEP_AWAY_RADIUS, 1.0),
+                RigidBody::Static,
+                collision_layer,
             ));
         }
     }

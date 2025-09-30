@@ -9,7 +9,7 @@ use crate::interaction_range::InteractionRangePlugin;
 use crate::team::TeamPlugin;
 use crate::wall::WallPlugin;
 
-pub const COLLISION_LAYER_GROUND: u32 = 1 << 2;
+pub const COLLISION_LAYER_GROUND: u32 = 1 << 4;
 
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
@@ -68,7 +68,7 @@ fn setup_scene_headless(mut commands: Commands) {
         Name::new("Ground Plane"),
         Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3::new(100.0, 1.0, 100.0)),
         RigidBody::Static,
-        Collider::cuboid(100.0, 1.0, 100.0),
+        Collider::cuboid(1.0, 1.0, 1.0),
         CollisionLayers::new(
             LayerMask(COLLISION_LAYER_GROUND),
             LayerMask(COLLISION_LAYER_AGENT),
@@ -90,7 +90,7 @@ fn setup_scene(
         MeshMaterial3d(green_material),
         Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3::new(100.0, 1.0, 100.0)),
         RigidBody::Static,
-        Collider::cuboid(100.0, 1.0, 100.0),
+        Collider::cuboid(1.0, 1.0, 1.0),
         CollisionLayers::new(
             LayerMask(COLLISION_LAYER_GROUND),
             LayerMask(COLLISION_LAYER_AGENT),

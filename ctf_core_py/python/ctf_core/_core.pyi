@@ -262,31 +262,13 @@ class FlagStatus(Enum):
 def run(config:Config) -> None:
     r"""
     Runs the Capture the Flag simulation with the given policies for each team.
-    
-    Parameters
-        `start`: A tuple (x, y) representing the start point of the segment.
-        `end`: A tuple (x, y) representing the end point of the segment.
-        `timeout_ms`: Optional timeout in milliseconds to wait for a response from the physics engine. Default is 100ms.
-    
-    Returns
-       `True` if the agent can move along the segment without colliding with any obstacles
-       `False` otherwise
     """
 
 def run_headless(config:Config) -> StateQueue: ...
 
-def segment_is_free(start:tuple[builtins.float, builtins.float], end:tuple[builtins.float, builtins.float], timeout_ms:builtins.int=100) -> builtins.bool:
+def segment_is_free(start:tuple[builtins.float, builtins.float], end:tuple[builtins.float, builtins.float], side:Team, timeout_ms:builtins.int=100) -> builtins.bool:
     r"""
-    Checks if the line segment from `start` to `end` is free of obstacles. The shape of agent is swept along
-    this segment to check for collisions.
-    
-    Parameters
-        `start`: A tuple (x, y) representing the start point of the segment.
-        `end`: A tuple (x, y) representing the end point of the segment.
-        `timeout_ms`: Optional timeout in milliseconds to wait for a response from the physics engine. Default is 100ms.
-    
-    Returns
-       `True` if the agent can move along the segment without colliding with any obstacles
-       `False` otherwise
+    Checks if the line segment from `start` to `end` is free of obstacles by
+    making a blocking RPC to the Bevy app's physics server.
     """
 
