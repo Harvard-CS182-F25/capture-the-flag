@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use ctf_core::{
     flag::{CapturePoint, Flag, FlagStatus},
-    team::{Team, TeamId},
+    team::TeamId,
 };
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyclass_enum, gen_stub_pymethods};
@@ -119,21 +119,21 @@ impl From<FlagStatus> for PyFlagStatus {
 }
 
 pub fn collect_flag_states(
-    agents: Query<(Entity, &Name, &Transform, &Flag, &Team)>,
+    flags: Query<(Entity, &Name, &Transform, &Flag)>,
 ) -> (Vec<FlagState>, Vec<FlagState>) {
     let mut red_team = vec![];
     let mut blue_team = vec![];
 
-    for (entity, name, transform, flag, team) in &agents {
+    for (entity, name, transform, flag) in &flags {
         let agent_state = FlagState {
             id: entity.index(),
             name: name.as_str().to_string(),
             position: (transform.translation.x, transform.translation.z),
-            team: team.0,
+            team: flag.team,
             flag: *flag,
         };
 
-        match team.0 {
+        match flag.team {
             TeamId::Red => red_team.push(agent_state),
             TeamId::Blue => blue_team.push(agent_state),
         }
@@ -142,25 +142,28 @@ pub fn collect_flag_states(
     red_team.sort_by_key(|a| a.id);
     blue_team.sort_by_key(|a| a.id);
 
+    eprintln!("Red Flags RUST: {:?}", red_team);
+    eprintln!("Blue Flags RUST: {:?}", blue_team);
+
     (red_team, blue_team)
 }
 
 pub fn collect_capture_point_states(
-    capture_points: Query<(Entity, &Name, &Transform, &CapturePoint, &Team)>,
+    capture_points: Query<(Entity, &Name, &Transform, &CapturePoint)>,
 ) -> (Vec<CapturePointState>, Vec<CapturePointState>) {
     let mut red_team = vec![];
     let mut blue_team = vec![];
 
-    for (entity, name, transform, capture_point, team) in &capture_points {
+    for (entity, name, transform, capture_point) in &capture_points {
         let cp_state = CapturePointState {
             name: name.as_str().to_string(),
             id: entity.index(),
-            team: team.0,
+            team: capture_point.team,
             position: (transform.translation.x, transform.translation.z),
             has_flag: capture_point.flag.is_some(),
         };
 
-        match team.0 {
+        match capture_point.team {
             TeamId::Red => red_team.push(cp_state),
             TeamId::Blue => blue_team.push(cp_state),
         }

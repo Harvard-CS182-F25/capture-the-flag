@@ -87,8 +87,8 @@ fn send_game_states(
     scores: Res<FlagCaptureCounts>,
     bridge: Option<Res<Bridge>>,
     agents: Query<(Entity, &Name, &Transform, &Agent, &Team)>,
-    flags: Query<(Entity, &Name, &Transform, &Flag, &Team)>,
-    capture_points: Query<(Entity, &Name, &Transform, &CapturePoint, &Team)>,
+    flags: Query<(Entity, &Name, &Transform, &Flag)>,
+    capture_points: Query<(Entity, &Name, &Transform, &CapturePoint)>,
 ) {
     let Some(bridge) = bridge else {
         return;

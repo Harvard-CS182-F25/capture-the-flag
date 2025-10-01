@@ -276,5 +276,14 @@ def segment_is_free(start:tuple[builtins.float, builtins.float], end:tuple[built
     r"""
     Checks if the line segment from `start` to `end` is free of obstacles by
     making a blocking RPC to the Bevy app's physics server.
+    
+    Parameters:
+      - `start`: Tuple of (x, y) coordinates for the start of the segment.
+      - `end`: Tuple of (x, y) coordinates for the end of the segment.
+      - `side`: Team ID (Team.RED or Team.BLUE)
+      - `timeout_ms`: Timeout in milliseconds for the RPC call (default: 100ms).
+    
+    Returns:
+     - `True` if the segment is free of obstacles, `False` otherwise. This does not include other agents
     """
 
