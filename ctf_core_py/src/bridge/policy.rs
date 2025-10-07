@@ -74,13 +74,14 @@ fn on_test_harness_stop(bridge: Option<Res<Bridge>>, mut exit: EventWriter<AppEx
     };
     if let Some(test) = &bridge.test {
         if test.rx_stop.try_recv().is_ok() {
-            println!("Test harness requested stop; exiting");
+            info!("Test harness requested stop; exiting");
 
             exit.write(AppExit::Success);
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn send_game_states(
     time: Res<Time>,
     mut t: ResMut<PolicyTimer>,
@@ -89,6 +90,7 @@ fn send_game_states(
     agents: Query<(Entity, &Name, &Transform, &Agent, &Team)>,
     flags: Query<(Entity, &Name, &Transform, &Flag)>,
     capture_points: Query<(Entity, &Name, &Transform, &CapturePoint)>,
+    mut exit: EventWriter<AppExit>,
 ) {
     let Some(bridge) = bridge else {
         return;
@@ -124,7 +126,10 @@ fn send_game_states(
         {
             Ok(_) => {}
             Err(TrySendError::Full(_)) => { /* worker still busy; skip this one */ }
-            Err(TrySendError::Disconnected(_)) => { /* worker died; you may log */ }
+            Err(TrySendError::Disconnected(_)) => {
+                warn!("Unable to transmit game state to a policy.");
+                exit.write(AppExit::Success);
+            }
         }
     }
 
@@ -132,7 +137,10 @@ fn send_game_states(
         match test.tx_state.try_send(game_state) {
             Ok(_) => {}
             Err(TrySendError::Full(_)) => {}
-            Err(TrySendError::Disconnected(_)) => { /* worker died; you may log */ }
+            Err(TrySendError::Disconnected(_)) => {
+                warn!("Unable to transmit game state to testing harness.");
+                exit.write(AppExit::Success);
+            }
         }
     }
 }
@@ -163,17 +171,16 @@ fn apply_actions(
                 } => {
                     let agent = agents.iter().find(|(e, _a)| e.index() == agent_id);
                     if agent.is_none() {
-                        eprintln!("No agent with id {agent_id}");
+                        warn!("No agent with id {agent_id}");
                         continue;
                     }
                     let (_, agent) = agent.unwrap();
                     let velocity = if velocity.norm() > agent.speed {
-                        eprintln!(
-                            "Agent {agent_id} trying to move too fast: {} > {}",
+                        warn!(
+                            "Agent {agent_id} trying to move too fast: {} > {}. Capping speed.",
                             velocity.norm(),
                             agent.speed
                         );
-                        eprintln!("Capping to max speed");
                         velocity.normalize() * agent.speed
                     } else {
                         velocity

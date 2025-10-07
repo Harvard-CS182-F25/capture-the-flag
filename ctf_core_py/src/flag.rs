@@ -141,10 +141,6 @@ pub fn collect_flag_states(
 
     red_team.sort_by_key(|a| a.id);
     blue_team.sort_by_key(|a| a.id);
-
-    eprintln!("Red Flags RUST: {:?}", red_team);
-    eprintln!("Blue Flags RUST: {:?}", blue_team);
-
     (red_team, blue_team)
 }
 

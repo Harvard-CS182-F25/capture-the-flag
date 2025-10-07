@@ -84,12 +84,10 @@ fn segment_hits_wall_flag_or_capture_point(
     let dist = delta.length();
     let rot = Quaternion::IDENTITY;
 
-    if dist <= f32::EPSILON
-        && !spatial
+    if !dist.is_finite() || dist <= 1e-4 {
+        return !spatial
             .shape_intersections(&shape, start, rot, &filter)
-            .is_empty()
-    {
-        return true;
+            .is_empty();
     }
 
     spatial

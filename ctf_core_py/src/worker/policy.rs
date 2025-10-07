@@ -3,6 +3,7 @@ use std::{
     process::{Child, Command, Stdio},
 };
 
+use bevy::log::warn;
 use crossbeam_channel::{bounded, Receiver, Sender, TrySendError};
 
 use crate::{config::PyConfig, game::GameState, team::PyTeamId};
@@ -38,10 +39,16 @@ fn run_io_loop(
                                 // drop newest (or choose a strategy to prefer latest)
                                 // simplest: just drop; apply_actions will consume older pending ones this frame
                             }
-                            Err(TrySendError::Disconnected(_)) => break,
+                            Err(TrySendError::Disconnected(_)) => {
+                                warn!("Policy action receiver disconnected");
+                                break;
+                            }
                         };
                     }
-                    Err(e) => eprintln!("Failed to parse actions from policy: {}, {}", line, e),
+                    Err(e) => {
+                        warn!("Failed to parse actions from policy: {}, {}", line, e);
+                        break;
+                    }
                 },
                 Err(_) => break,
             }
@@ -55,6 +62,18 @@ fn run_io_loop(
             let _ = stdin.flush();
         } else {
             break;
+        }
+
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                warn!("Policy process exited with status {status}. Exiting...");
+                break;
+            }
+            Ok(None) => { /* still running */ }
+            Err(e) => {
+                warn!("Unable to wait for child process: {e}");
+                break;
+            }
         }
 
         if rx_err.try_recv().is_ok() {

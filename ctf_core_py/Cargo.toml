@@ -22,6 +22,7 @@ bevy = { version = "0.16.1", default-features = false, features = [
     "bevy_winit",
     "tonemapping_luts",
     "x11",
+    "bevy_log",
 
 ] }
 bevy-inspector-egui = "0.33.1"
