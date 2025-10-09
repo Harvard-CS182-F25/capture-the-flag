@@ -15,6 +15,8 @@ use bevy::window::PrimaryWindow;
 use bevy::winit::WinitWindows;
 use ctf_core::team::TeamId;
 use pyo3::prelude::*;
+use std::io::{BufRead, BufReader, Write};
+use std::net::TcpStream;
 use std::time::Duration;
 
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
@@ -185,7 +187,7 @@ fn run_headless(py: Python<'_>, config: &PyConfig) -> PyResult<StateQueue> {
 
 #[gen_stub_pyfunction]
 #[pyfunction(name = "segment_is_free")]
-#[pyo3(signature = (start, end, side, timeout_ms=100))]
+#[pyo3(signature = (start, end, side, timeout_ms=None))]
 /// Checks if the line segment from `start` to `end` is free of obstacles by
 /// making a blocking RPC to the Bevy app's physics server.
 ///
@@ -201,11 +203,8 @@ pub fn segment_is_free(
     start: (f32, f32),
     end: (f32, f32),
     side: PyTeamId,
-    timeout_ms: u64,
+    timeout_ms: Option<u64>,
 ) -> PyResult<bool> {
-    use std::io::{BufRead, BufReader, Write};
-    use std::net::TcpStream;
-
     // Get server address from env or from the physics module (same-process).
     let addr = std::env::var("PHYSICS_ADDR")
         .ok()
@@ -219,8 +218,11 @@ pub fn segment_is_free(
     let stream = TcpStream::connect(&addr).map_err(|e| {
         pyo3::exceptions::PyConnectionError::new_err(format!("connect {}: {}", addr, e))
     })?;
-    let _ = stream.set_read_timeout(Some(Duration::from_millis(timeout_ms)));
-    let _ = stream.set_write_timeout(Some(Duration::from_millis(50)));
+
+    if let Some(timeout_ms) = timeout_ms {
+        let _ = stream.set_read_timeout(Some(Duration::from_millis(timeout_ms)));
+    }
+    // let _ = stream.set_write_timeout(Some(Duration::from_millis(50)));
 
     // Simple one-shot request with id=1.
     let team_str = match side.inner {
@@ -249,6 +251,7 @@ pub fn segment_is_free(
     })?;
 
     #[derive(serde::Deserialize)]
+    #[allow(dead_code)]
     struct PhysResp {
         id: u64,
         free: bool,

@@ -1,19 +1,11 @@
 use std::sync::RwLock;
 
-use avian3d::{math::Quaternion, prelude::*};
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use crossbeam_channel::{Receiver, Sender};
-use ctf_core::flag::{COLLISION_LAYER_CAMP_BLOCK_BLUE, COLLISION_LAYER_CAMP_BLOCK_RED};
 use ctf_core::team::TeamId;
-use ctf_core::wall::COLLISION_LAYER_WALL;
+use ctf_core::{segment_hits_wall_flag_or_capture_point, Segment2D};
 use once_cell::sync::Lazy;
-
-// --- public query types used in-proc ---
-#[derive(Debug, Clone, Copy)]
-pub struct Segment2D {
-    pub start: Vec2, // (x,z) on ground plane
-    pub end: Vec2,
-}
 
 pub enum PhysicsQuery {
     SegmentCollision2D {
@@ -61,45 +53,6 @@ pub fn process_physics_queries(receiver: Res<PhysicsRx>, spatial: SpatialQuery) 
             }
         }
     }
-}
-
-// Core collision helper used by both in-proc and RPC paths.
-fn segment_hits_wall_flag_or_capture_point(
-    spatial: &SpatialQuery,
-    seg: Segment2D,
-    team_id: TeamId,
-) -> bool {
-    let shape = Collider::cuboid(1.0, 1.0, 1.0);
-
-    // 1) Walls: simple mask
-    let block_mask = match team_id {
-        TeamId::Red => COLLISION_LAYER_WALL | COLLISION_LAYER_CAMP_BLOCK_RED,
-        TeamId::Blue => COLLISION_LAYER_WALL | COLLISION_LAYER_CAMP_BLOCK_BLUE,
-    };
-    let filter = SpatialQueryFilter::from_mask(LayerMask(block_mask));
-
-    let start = Vec3::new(seg.start.x, 0.5, seg.start.y);
-    let end = Vec3::new(seg.end.x, 0.5, seg.end.y);
-    let delta = end - start;
-    let dist = delta.length();
-    let rot = Quaternion::IDENTITY;
-
-    if !dist.is_finite() || dist <= 1e-4 {
-        return !spatial
-            .shape_intersections(&shape, start, rot, &filter)
-            .is_empty();
-    }
-
-    spatial
-        .cast_shape(
-            &shape,
-            start,
-            rot,
-            Dir3::new(delta).unwrap(),
-            &ShapeCastConfig::from_max_distance(dist),
-            &filter,
-        )
-        .is_some()
 }
 
 // --- Tiny TCP RPC server so other processes can ask for segment_is_free ---

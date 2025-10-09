@@ -11,6 +11,7 @@ use crate::flag::{
 use crate::interaction_range::RecentlyDropped;
 use crate::interaction_range::events::{FlagDropEvent, FlagScoreEvent};
 use crate::team::{Team, TeamId};
+use crate::{Segment2D, segment_hits_wall_flag_or_capture_point};
 
 use super::components::{InteractionRadius, InteractionRange, VisibleRange};
 use super::events::FlagPickupEvent;
@@ -305,6 +306,7 @@ pub fn handle_flag_drop(
     mut commands: Commands,
     mut agents: Query<(&mut Agent, &mut LinearVelocity)>,
     mut flags: Query<(&mut Flag, &mut Visibility, &GlobalTransform)>,
+    spatial_query: SpatialQuery,
     agent_graphics: Option<Res<AgentGraphicsAssets>>,
 ) {
     for FlagDropEvent {
@@ -350,13 +352,34 @@ pub fn handle_flag_drop(
                 TimerMode::Once,
             )));
 
-        let angle = rand::random::<f32>() * std::f32::consts::TAU;
-        let offset = Vec3::new(
-            FLAG_SPAWN_RADIUS * angle.cos(),
-            0.0,
-            FLAG_SPAWN_RADIUS * angle.sin(),
-        );
-        let drop_world = global_tf.translation() + offset;
+        let mut drop_world = Vec3::ZERO;
+        let mut found = false;
+        for _ in 0..100 {
+            let angle = rand::random::<f32>() * std::f32::consts::TAU;
+            let offset = Vec3::new(
+                FLAG_SPAWN_RADIUS * angle.cos(),
+                0.0,
+                FLAG_SPAWN_RADIUS * angle.sin(),
+            );
+            drop_world = global_tf.translation() + offset;
+            drop_world.x = drop_world.x.clamp(-49.0, 49.0);
+            drop_world.z = drop_world.z.clamp(-49.0, 49.0);
+
+            if !segment_hits_wall_flag_or_capture_point(
+                &spatial_query,
+                Segment2D {
+                    start: drop_world.xz(),
+                    end: drop_world.xz(),
+                },
+                flag.team,
+            ) {
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            drop_world = global_tf.translation();
+        }
 
         commands.queue(move |world: &mut World| {
             let mut e = world.entity_mut(flag_entity);

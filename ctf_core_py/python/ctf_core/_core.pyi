@@ -272,7 +272,7 @@ def run(config:Config) -> None:
 
 def run_headless(config:Config) -> StateQueue: ...
 
-def segment_is_free(start:tuple[builtins.float, builtins.float], end:tuple[builtins.float, builtins.float], side:Team, timeout_ms:builtins.int=100) -> builtins.bool:
+def segment_is_free(start:tuple[builtins.float, builtins.float], end:tuple[builtins.float, builtins.float], side:Team, timeout_ms:typing.Optional[builtins.int]=None) -> builtins.bool:
     r"""
     Checks if the line segment from `start` to `end` is free of obstacles by
     making a blocking RPC to the Bevy app's physics server.

@@ -17,7 +17,7 @@ class AgentProtocol(Protocol):
 
     def get_action(self, game_state: GameState, agent_state: AgentState) -> Action: ...
 
-def point_is_free(point: Position, side: Team, timeout_ms: int = 100) -> bool:
+def point_is_free(point: Position, side: Team, timeout_ms: Optional[int] = None) -> bool:
     return segment_is_free(point, point, side, timeout_ms=timeout_ms)
 
 def plot(nodes: list, goal_positions: Optional[list[Position]] = None):
